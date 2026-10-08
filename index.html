@@ -152,6 +152,11 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .opt b{font-size:14px}
 .opt span{font-size:12px;color:var(--muted)}
 .opt.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.zopt{display:flex;flex-direction:row;gap:10px;align-items:flex-start;margin-top:8px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;cursor:pointer;color:var(--ink)}
+.zopt input{width:auto;margin:3px 0 0}
+.zopt b{display:block;font-size:14px}
+.zopt span span{display:block;font-size:12px;color:var(--muted)}
+.zopt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
 .reset{margin-top:6px;padding:4px 8px;font-size:12px;font-weight:500}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:12px 14px;border-radius:10px;font-weight:400;background:var(--field)}
@@ -280,6 +285,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
             <button data-v="3" class="opt" id="optU"><b>Melody on X and Y</b><span>Two motors play the tune. Louder, the bed moves too.</span></button>
             <button data-v="2" class="opt"><b>Melody + second part</b><span>One motor each. Fuller, but each part is quieter.</span></button>
           </div>
+          <label class="zopt hidden" id="zRow"><input type="checkbox" id="zOn"><span><b>Bed motors join in (Z)</b><span id="zSub">The bed and frame resonate, which is often clearly louder.</span></span></label>
           <select id="voice2" class="hidden" style="margin-top:8px" aria-label="Second part">
             <option value="bass">Second part: bass (lowest note)</option>
             <option value="second">Second part: harmony (next note down)</option>
@@ -327,6 +333,9 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
         <label>Max speed (mm/s) <input type="number" id="vI" step="any"></label>
         <label>Acceleration (mm/s²) <input type="number" id="accI" step="any"></label>
         <label>Z height while playing (mm) <input type="number" id="zI" step="any"></label>
+        <label>Full steps/mm Z (0 = no Z) <input type="number" id="fsZ" step="any"></label>
+        <label>Max Z speed (mm/s) <input type="number" id="vZ" step="any"></label>
+        <label>Z travel while playing (mm) <input type="number" id="hzI" step="any"></label>
         <label>Tuning offset (semitones) <input type="number" id="tune" value="0" step="0.1"></label>
       </div>
       <div class="calc">
@@ -385,10 +394,10 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
 // com = community copy of stock config, est = estimated (calibrate with test tone)
 const PRINTERS=[
   // Prusa (Prusa-Firmware-Buddy / Prusa-Firmware sources)
-  {b:'Prusa',m:'CORE One+ (Gen 2, 1.5GT belts)',kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw'},
-  {b:'Prusa',m:'CORE One+ with INDX',indx:true,kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,205,270],c:[125,103],v:350,vs:140,acc:10000,src:'fw',
+  {b:'Prusa',m:'CORE One+ (Gen 2, 1.5GT belts)',fz:25,vz:30,vzs:12,kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw'},
+  {b:'Prusa',m:'CORE One+ with INDX',fz:25,vz:30,vzs:12,indx:true,kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,205,270],c:[125,103],v:350,vs:140,acc:10000,src:'fw',
     note:'Keep away from the right edge (tool changer wiper). The default travel stays centered.'},
-  {b:'Prusa',m:'CORE One (2GT belts)',kin:'corexy',fw:'buddy',fs:[12.5,12.5],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw',
+  {b:'Prusa',m:'CORE One (2GT belts)',fz:25,vz:30,vzs:12,kin:'corexy',fw:'buddy',fs:[12.5,12.5],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw',
     note:'Early CORE One with 2GT belts. After upgrading to 1.5GT belts, pick the Gen 2 entry. If unsure, check M92 on the printer.'},
   {b:'Prusa',m:'CORE One L+ (1.5GT)',kin:'corexy',fw:'buddy',fs:[6.349,6.349],sz:[300,300,330],c:[150,150],v:500,vs:160,acc:10000,src:'fw'},
   {b:'Prusa',m:'CORE One L (2GT)',kin:'corexy',fw:'buddy',fs:[6.25,6.25],sz:[300,300,330],c:[150,150],v:500,vs:160,acc:10000,src:'fw'},
@@ -586,7 +595,9 @@ function segMotion(seg, P, voices){
   if(b!==null&&!ok(calc(null,b))){ b=null; dropB=true }
   let m=calc(a,b);
   if(!ok(m)&&b!==null){ b=null; dropB=true; m=calc(a,b) }
-  return {vx:Math.abs(m.vx), vy:Math.abs(m.vy), a, b, dropA, dropB};
+  let vz=0, dropZ=false;
+  if(P.zOn&&a!==null){ vz=hz(a)/P.fsZ; if(vz>P.vzmax){ vz=0; dropZ=true } }
+  return {vx:Math.abs(m.vx), vy:Math.abs(m.vy), vz, a, b, dropA, dropB, dropZ};
 }
 
 // ---------- G-code ----------
@@ -621,29 +632,35 @@ function gcodeHeader(P, title, mode='file'){
 
 function buildGcode(segs, P, voices, title, mode='file'){
   const g=gcodeHeader(P,title,mode), f3=x=>x.toFixed(3);
-  let px=0, py=0, dx=1, dy=1, rest=0, played=0, skipA=0, skipB=0;
+  let px=0, py=0, pz=0, dx=1, dy=1, dz=1, rest=0, played=0, skipA=0, skipB=0, zNotes=0, zDrop=0;
+  const hzT=Math.max(5,P.hz||60);
   const flushRest=()=>{ const ms=Math.round(rest*1000); if(ms>0) g.push(`G4 P${ms}`); rest=0 };
   for(const seg of segs){
     const m=segMotion(seg,P,voices);
-    if(m.dropA) skipA++; if(m.dropB) skipB++;
-    if(m.vx<1e-6&&m.vy<1e-6){ rest+=seg.d; continue }
+    if(m.dropA) skipA++; if(m.dropB) skipB++; if(m.dropZ) zDrop++; if(m.vz>0) zNotes++;
+    if(m.vx<1e-6&&m.vy<1e-6&&m.vz<1e-6){ rest+=seg.d; continue }
     flushRest(); played++;
-    const F=(Math.hypot(m.vx,m.vy)*60).toFixed(1);
+    const F=(Math.hypot(m.vx,m.vy,m.vz)*60).toFixed(1);
     let rem=seg.d, guard=0;
     while(rem>1e-7&&guard++<100000){
       const rx=dx>0?P.hx-px:px+P.hx, ry=dy>0?P.hy-py:py+P.hy;
       if(m.vx>1e-6&&rx<0.5){dx=-dx;continue}
       if(m.vy>1e-6&&ry<0.5){dy=-dy;continue}
-      const tx=m.vx>1e-6?rx/m.vx:Infinity, ty=m.vy>1e-6?ry/m.vy:Infinity;
-      const dt=Math.min(rem,tx,ty);
-      px+=m.vx*dt*dx; py+=m.vy*dt*dy; rem-=dt;
-      g.push(m.vy>1e-6?`G1 X${f3(P.cx+px)} Y${f3(P.cy+py)} F${F}`:`G1 X${f3(P.cx+px)} F${F}`);
+      const rz=dz>0?hzT-pz:pz;
+      if(m.vz>1e-6&&rz<0.5){dz=-dz;continue}
+      const tx=m.vx>1e-6?rx/m.vx:Infinity, ty=m.vy>1e-6?ry/m.vy:Infinity, tz=m.vz>1e-6?rz/m.vz:Infinity;
+      const dt=Math.min(rem,tx,ty,tz);
+      px+=m.vx*dt*dx; py+=m.vy*dt*dy; pz+=m.vz*dt*dz; rem-=dt;
+      let line=`G1 X${f3(P.cx+px)}`;
+      if(m.vy>1e-6) line+=` Y${f3(P.cy+py)}`;
+      if(m.vz>1e-6) line+=` Z${f3(P.z+pz)}`;
+      g.push(`${line} F${F}`);
     }
   }
   flushRest();
-  if(mode==='snippet') g.push('M400', `G1 X${P.cx} Y${P.cy} F${Math.round(Math.min(P.vmax,150)*60)}`, 'M400', MARK_END);
+  if(mode==='snippet') g.push('M400', `G1 X${P.cx} Y${P.cy} Z${+P.z.toFixed(1)} F${Math.round(Math.min(P.vmax,150)*60)}`, 'M400', MARK_END);
   else g.push('M400', P.fw==='bambu'?'M18':'M84', MARK_END);
-  return {text:g.join('\n')+'\n', played, skipA, skipB};
+  return {text:g.join('\n')+'\n', played, skipA, skipB, zNotes, zDrop};
 }
 
 // count notes the printer cannot reach for a given extra transposition
@@ -767,7 +784,9 @@ function P(){
   return {name:p.b+' '+p.m, kin:$('kin').value, fw:$('fw').value, indx:!!p.indx,
     fsX:num('fsX',p.fs[0])*k, fsY:num('fsY',p.fs[1])*k,
     cx:num('cxI',p.c[0]), cy:num('cyI',p.c[1]), hx:Math.max(5,num('hxI',50)), hy:Math.max(5,num('hyI',50)),
-    vmax:Math.max(1,v), acc:Math.max(100,num('accI',p.acc)), z:num('zI',20)};
+    vmax:Math.max(1,v), acc:Math.max(100,num('accI',p.acc)), z:num('zI',20),
+    fsZ:num('fsZ',p.fz||0)*k, vzmax:($('stealth').checked&&p.vzs)?Math.min(num('vZ',p.vz||0),p.vzs):num('vZ',p.vz||0),
+    hz:Math.max(5,num('hzI',60)), zOn:$('zOn').checked&&num('fsZ',0)>0&&num('vZ',0)>0};
 }
 
 function secNotes(from,to){
@@ -787,6 +806,7 @@ function initPrinters(){
   $('brand').value=PRINTERS[idx].b; fillModels(idx);
   if(saved.stealth) $('stealth').checked=true;
   if(saved.tune) $('tune').value=saved.tune;
+  if(saved.zOn) $('zOn').checked=true;
   if(saved.voices===2||saved.voices===3) setVoices(saved.voices);
 }
 function fillModels(sel){
@@ -800,6 +820,7 @@ function loadPrinter(){
   $('fsX').value=p.fs[0]; $('fsY').value=p.fs[1]; $('kin').value=p.kin; $('fw').value=p.fw;
   $('cxI').value=p.c[0]; $('cyI').value=p.c[1];
   $('hxI').value=Math.max(10,p.sz[0]/2-20); $('hyI').value=Math.max(10,p.sz[1]/2-20);
+  $('fsZ').value=p.fz||0; $('vZ').value=p.vz||0; $('hzI').value=Math.max(10,Math.min(80,p.sz[2]-60));
   $('vI').value=p.v; $('accI').value=p.acc; $('zI').value=Math.min(20,Math.max(5,p.sz[2]-20));
   $('stealthRow').classList.toggle('hidden',!p.vs);
   if(p.src==='man') $('adv').open=true;
@@ -969,10 +990,12 @@ function melodyStats(segs){
 }
 function audibleShift(){
   const q=P(), segs=segsFor(A,B), st=melodyStats(segs); if(!st) return 0;
-  let best=0, bestKey=[Infinity,Infinity];
+  let best=0, bestKey=[Infinity,Infinity,Infinity];
   for(let e=-48;e<=48;e+=12){
-    const key=[countSkipped(segs,q,voices,e), Math.abs(st.med+e-AUD_TARGET)];
-    if(key[0]<bestKey[0]||(key[0]===bestKey[0]&&key[1]<bestKey[1])){ best=e; bestKey=key }
+    // with Z on, keep the bed motors playing: prefer octaves where Z drops no notes
+    let zd=0; if(q.zOn) for(const x of segs){ if(x.a!==null&&segMotion({d:x.d,a:x.a+e,b:null},q,voices).dropZ) zd++ }
+    const key=[countSkipped(segs,q,voices,e), zd, Math.abs(st.med+e-AUD_TARGET)];
+    if(key[0]<bestKey[0]||(key[0]===bestKey[0]&&(key[1]<bestKey[1]||(key[1]===bestKey[1]&&key[2]<bestKey[2])))){ best=e; bestKey=key }
   }
   return best;
 }
@@ -1011,7 +1034,8 @@ function compute(){
   if(!skipped){
     let vmaxUsed=0; for(const s of segs){ const m=segMotion(s,q,voices); vmaxUsed=Math.max(vmaxUsed,Math.hypot(m.vx,m.vy)) }
     st.className='status ok';
-    st.textContent=`Everything is playable on ${q.name}: ${fmtT(dur)} long, fastest move ${Math.round(vmaxUsed)} of ${Math.round(q.vmax)} mm/s.`;
+    st.textContent=`Everything is playable on ${q.name}: ${fmtT(dur)} long, fastest move ${Math.round(vmaxUsed)} of ${Math.round(q.vmax)} mm/s.`+
+      (q.zOn?(r.zDrop?` Bed motors join ${r.zNotes} of ${r.zNotes+r.zDrop} notes; higher ones are above their speed limit.`:' Bed motors join every note.'):'');
   } else {
     let best=0, bestN=skipped;
     for(const ex of [-12,-24,-36,-48,12,24]){ const n=countSkipped(segs,q,voices,ex); if(n<bestN){best=ex;bestN=n} }
@@ -1168,6 +1192,9 @@ function voicesText(){
   $('optU').classList.toggle('hidden',xy);
   if(xy&&voices===3){ setVoices(1); return }
   $('o1').textContent=xy?'Both motors play the tune. Loudest.':'The X motor plays the tune.';
+  const hasZ=num('fsZ',0)>0&&num('vZ',0)>0; $('zRow').classList.toggle('hidden',!hasZ);
+  if(hasZ){ const q=P(), fmax=Math.round(q.vzmax*q.fsZ);
+    $('zSub').textContent=`The bed and frame resonate, often clearly louder. The bed moves up and down. Z joins notes up to ${fmax} Hz.` }
 }
 function setVoices(n){
   voices=n; store.set({voices:n});
@@ -1188,6 +1215,7 @@ for(const b of document.querySelectorAll('[data-reset]')) b.onclick=()=>{ $(b.da
 $('tempo').addEventListener('dblclick',()=>{ $('tempo').value=100; liveChange() });
 $('vari').addEventListener('dblclick',()=>{ $('vari').value=100; liveChange() });
 $('track').onchange=loadTrack;
+$('zOn').onchange=()=>{ store.set({zOn:$('zOn').checked}); liveChange() };
 $('autoTr').onclick=()=>{
   if(!midi) return;
   const e=audibleShift();
@@ -1228,7 +1256,7 @@ $('detect').onclick=detect;
 $('brand').onchange=()=>fillModels();
 $('model').onchange=loadPrinter;
 $('stealth').onchange=()=>{ store.set({stealth:$('stealth').checked}); printerChanged() };
-['fsX','fsY','kin','fw','cxI','cyI','hxI','hyI','vI','accI','zI'].forEach(id=>$(id).addEventListener('input',printerChanged));
+['fsX','fsY','kin','fw','cxI','cyI','hxI','hyI','vI','accI','zI','fsZ','vZ','hzI'].forEach(id=>$(id).addEventListener('input',printerChanged));
 $('tune').addEventListener('input',()=>{ store.set({tune:num('tune',0)}); printerChanged() });
 $('advReset').onclick=loadPrinter;
 $('cApply').onclick=()=>{
@@ -1274,7 +1302,7 @@ $('dl').onclick=()=>{
   const name=`${fileName}${suffix()}_${slug(cur().b+' '+cur().m.replace(/\(.*?\)/g,''))}${outMode==='snippet'?'_start-snippet':''}.gcode`;
   download(r.text,name);
   $('steps').children[3].classList.add('done');
-  $('out').textContent=`${name}\n${r.text.split('\n').length} lines · ${voices===2?'2 voices':voices===3?'unison':'1 voice'} · ${q.name}`+
+  $('out').textContent=`${name}\n${r.text.split('\n').length} lines · ${voices===2?'2 voices':voices===3?'unison':'1 voice'}${q.zOn?' + Z':''} · ${q.name}`+
     ((r.skipA+r.skipB)?` · ${r.skipA+r.skipB} too-high sections played as rests`:'');
 };
 $('calib').onclick=()=>{
