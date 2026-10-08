@@ -363,7 +363,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
 const PRINTERS=[
   // Prusa (Prusa-Firmware-Buddy / Prusa-Firmware sources)
   {b:'Prusa',m:'CORE One+ (Gen 2, 1.5GT belts)',kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw'},
-  {b:'Prusa',m:'CORE One+ with INDX',kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,205,270],c:[125,103],v:350,vs:140,acc:10000,src:'fw',
+  {b:'Prusa',m:'CORE One+ with INDX',indx:true,kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,205,270],c:[125,103],v:350,vs:140,acc:10000,src:'fw',
     note:'Keep away from the right edge (tool changer wiper). The default travel stays centered.'},
   {b:'Prusa',m:'CORE One (2GT belts)',kin:'corexy',fw:'buddy',fs:[12.5,12.5],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw',
     note:'Early CORE One with 2GT belts. After upgrading to 1.5GT belts, pick the Gen 2 entry. If unsure, check M92 on the printer.'},
@@ -436,7 +436,7 @@ function profile(p, o={}){
   const fs=o.fs||p.fs, sz=p.sz, c=o.c||p.c;
   const v=o.v||(o.stealth&&p.vs?p.vs:p.v);
   return {
-    name:p.b+' '+p.m, kin:o.kin||p.kin, fw:o.fw||p.fw,
+    name:p.b+' '+p.m, kin:o.kin||p.kin, fw:o.fw||p.fw, indx:!!p.indx,
     fsX:fs[0]*k, fsY:fs[1]*k, cx:c[0], cy:c[1],
     hx:o.hx||Math.max(10,sz[0]/2-20), hy:o.hy||Math.max(10,sz[1]/2-20),
     vmax:v, acc:o.acc||p.acc, z:o.z||Math.min(20,Math.max(5,sz[2]-20))
@@ -579,6 +579,12 @@ function gcodeHeader(P, title, mode='file'){
     '; To remove it, delete everything from STEPPERSONG BEGIN to STEPPERSONG END.',
     '; Machine limits are not changed, so print settings stay untouched.');
   else L.push('; Axis moves only: no heating, no extrusion');
+  // Prusa Buddy shows "not sliced for input shaping" / "old INDX profiles" warnings unless these
+  // feature declarations are present. INDX lock is only known to INDX firmware builds.
+  if(mode!=='snippet'&&P.fw==='buddy'){
+    L.push('M862.6 P"Input Shaper"');
+    if(P.indx) L.push('M862.6 P"INDX lock"');
+  }
   L.push('G90','G21','G28');
   if(mode!=='snippet'){
     if(P.fw==='klipper') L.push(`SET_VELOCITY_LIMIT VELOCITY=${v} ACCEL=${a}`);
@@ -734,7 +740,7 @@ function P(){
   const p=cur(), k=Math.pow(2,num('tune',0)/12);
   let v=num('vI',p.v);
   if($('stealth').checked&&p.vs) v=Math.min(v,p.vs);
-  return {name:p.b+' '+p.m, kin:$('kin').value, fw:$('fw').value,
+  return {name:p.b+' '+p.m, kin:$('kin').value, fw:$('fw').value, indx:!!p.indx,
     fsX:num('fsX',p.fs[0])*k, fsY:num('fsY',p.fs[1])*k,
     cx:num('cxI',p.c[0]), cy:num('cyI',p.c[1]), hx:Math.max(5,num('hxI',50)), hy:Math.max(5,num('hyI',50)),
     vmax:Math.max(1,v), acc:Math.max(100,num('accI',p.acc)), z:num('zI',20)};
