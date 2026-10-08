@@ -105,7 +105,7 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;min-width:150px}
 .time small{display:block;color:var(--muted);font-size:12px}
 .transport .sp{flex:1}
-.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:14px}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin-top:14px}
 .ctl{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
 .ctl .head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600}
 .ctl .head output{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--accent)}
@@ -139,6 +139,20 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .out{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--muted);margin-top:12px;white-space:pre-wrap}
 .howto{margin:14px 0 0;padding-left:20px;font-size:14px}
 .howto li{margin:4px 0}
+.freq{position:relative;height:14px;border-radius:7px;background:var(--line);margin-top:10px;overflow:hidden}
+.freq .sweet{position:absolute;top:0;bottom:0;background:var(--ok-soft);border-left:1px solid var(--ok);border-right:1px solid var(--ok)}
+.freq .over{position:absolute;top:0;bottom:0;right:0;background:repeating-linear-gradient(45deg,var(--warn-soft) 0 4px,transparent 4px 8px)}
+.freq .mel{position:absolute;top:3px;bottom:3px;border-radius:4px;background:var(--accent);min-width:4px}
+.freqlbl{position:relative;height:15px;font-size:11px;color:var(--muted);margin-top:3px}
+.freqlbl span{position:absolute;top:0;white-space:nowrap}
+.pitchrow{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.pitchrow button{padding:6px 8px;font-size:13px;white-space:nowrap}
+.opts{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.opt{display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;padding:8px 10px;font-weight:400;border-radius:8px}
+.opt b{font-size:14px}
+.opt span{font-size:12px;color:var(--muted)}
+.opt.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.reset{margin-top:6px;padding:4px 8px;font-size:12px;font-weight:500}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:12px 14px;border-radius:10px;font-weight:400;background:var(--field)}
 .tile b{font-size:15px}
@@ -236,32 +250,39 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
 
       <div class="controls">
         <div class="ctl">
-          <div class="head"><span>Tempo</span><output id="tempoO">100 %</output></div>
-          <input type="range" id="tempo" min="25" max="200" step="1" value="100" aria-label="Tempo in percent">
-          <div class="sub">Faster or slower, pitch stays the same.</div>
+          <div class="head"><span>Speed</span><output id="tempoO">100 %</output></div>
+          <input type="range" id="tempo" min="25" max="200" step="1" value="100" aria-label="Speed in percent">
+          <div class="sub">Plays faster or slower. The notes stay the same.</div>
+          <button class="reset hidden" data-reset="tempo">Reset to 100 %</button>
         </div>
         <div class="ctl">
-          <div class="head"><span>Varispeed</span><output id="variO">100 %</output></div>
-          <input type="range" id="vari" min="50" max="200" step="1" value="100" aria-label="Varispeed in percent">
-          <div class="sub" id="variSub">Tempo and pitch together, like a faster tape.</div>
+          <div class="head"><span>Speed + pitch</span><output id="variO">100 %</output></div>
+          <input type="range" id="vari" min="50" max="200" step="1" value="100" aria-label="Speed and pitch in percent">
+          <div class="sub" id="variSub">Faster also means higher, like a tape played fast.</div>
+          <button class="reset hidden" data-reset="vari">Reset to 100 %</button>
         </div>
         <div class="ctl">
-          <div class="head"><span>Transpose</span><output id="trO">0</output></div>
-          <div class="stepper">
-            <button data-tr="-12" title="One octave down">−12</button><button data-tr="-1">−1</button>
-            <input type="number" id="transpose" value="0" step="1" min="-48" max="48" aria-label="Semitones">
-            <button data-tr="1">+1</button><button data-tr="12" title="One octave up">+12</button>
+          <div class="head"><span>Pitch</span><output id="trO">original</output></div>
+          <div class="freq" aria-hidden="true"><div class="sweet" id="sweet"></div><div class="over" id="over"></div><div class="mel" id="mel"></div></div>
+          <div class="freqlbl"><span style="left:0">quiet</span><span id="lblSweet" style="transform:translateX(-50%)">easy to hear</span><span style="right:0">high</span></div>
+          <div class="sub" id="trSub">Load a file to see where the melody sits.</div>
+          <button id="autoTr" class="primary aud">Make it louder: move to the best range</button>
+          <div class="pitchrow">
+            <button data-tr="-12" aria-label="Octave down">↓ Octave</button><button data-tr="12" aria-label="Octave up">↑ Octave</button>
+            <button data-tr="-1" aria-label="Half step down">↓ Half step</button><button data-tr="1" aria-label="Half step up">↑ Half step</button>
           </div>
-          <div class="sub" id="trSub">Semitones. ±12 = one octave.</div>
-          <button id="autoTr" class="aud">Auto: most audible octave</button>
+          <input type="number" id="transpose" value="0" step="1" class="hidden" aria-hidden="true">
         </div>
         <div class="ctl">
-          <div class="head"><span>Voices</span><output id="voicesO">1</output></div>
-          <div class="seg full" id="voices" style="margin-top:8px"><button data-v="1" class="on">One</button><button data-v="3">Unison</button><button data-v="2">Two</button></div>
-          <div class="sub" id="voicesSub">Plays the highest note.</div>
-          <select id="voice2" class="hidden" style="margin-top:6px" aria-label="Second voice">
-            <option value="bass">2nd voice: bass</option>
-            <option value="second">2nd voice: second-highest</option>
+          <div class="head"><span>What the motors play</span></div>
+          <div class="opts" id="voices">
+            <button data-v="1" class="opt on"><b>Melody</b><span id="o1">Both motors play the tune. Loudest.</span></button>
+            <button data-v="3" class="opt" id="optU"><b>Melody on X and Y</b><span>Two motors play the tune. Louder, the bed moves too.</span></button>
+            <button data-v="2" class="opt"><b>Melody + second part</b><span>One motor each. Fuller, but each part is quieter.</span></button>
+          </div>
+          <select id="voice2" class="hidden" style="margin-top:8px" aria-label="Second part">
+            <option value="bass">Second part: bass (lowest note)</option>
+            <option value="second">Second part: harmony (next note down)</option>
           </select>
         </div>
       </div>
@@ -937,7 +958,9 @@ function setCrop(a,b){
 }
 
 let lastResult=null;
-const AUD_TARGET=84;   // ~C6 / 1 kHz: where the ear is sensitive and steppers still run smoothly
+const F_LO=50, F_HI=6000, fx=f=>Math.max(0,Math.min(100,Math.log(f/F_LO)/Math.log(F_HI/F_LO)*100));
+const AUD_TARGET=84;
+(()=>{ const a=fx(600), b=fx(3000); $('sweet').style.left=a+'%'; $('sweet').style.width=(b-a)+'%'; $('lblSweet').style.left=((a+b)/2)+'%' })();   // ~C6 / 1 kHz: where the ear is sensitive and steppers still run smoothly
 function melodyStats(segs){
   const v=segs.filter(x=>x.a!==null); if(!v.length) return null;
   const tot=v.reduce((t,x)=>t+x.d,0), sorted=[...v].sort((x,y)=>x.a-y.a);
@@ -959,20 +982,27 @@ function compute(){
   const v=vari(), sh=12*Math.log2(v);
   $('tempoO').textContent=Math.round(tempoF()*100)+' %';
   $('variO').textContent=Math.round(v*100)+' %';
-  $('variSub').textContent=Math.abs(sh)<0.005?'Tempo and pitch together, like a faster tape.':
-    `Pitch ${sh>0?'+':''}${sh.toFixed(2)} semitones, tempo ×${v.toFixed(2)}.`;
-  const tr=parseInt($('transpose').value)||0; $('trO').textContent=(tr>0?'+':'')+tr;
+  $('variSub').textContent=Math.abs(sh)<0.005?'Faster also means higher, like a tape played fast.':
+    `Notes ${sh>0?'+':''}${sh.toFixed(1)} half steps higher, ${v.toFixed(2)}× as fast.`;
+  const tr=parseInt($('transpose').value)||0;
+  $('trO').textContent=!tr?'original':(tr%12===0?`${tr>0?'+':''}${tr/12} octave${Math.abs(tr)>12?'s':''}`:`${tr>0?'+':''}${tr} half steps`);
+  for(const id of ['tempo','vari']) document.querySelector(`[data-reset="${id}"]`).classList.toggle('hidden',num(id,100)===100);
   if(!midi){ setDlHint('Load a MIDI or audio file in step 1 to enable the download.'); draw(); return }
   const q=P(), segs=segsFor(A,B), r=buildGcode(segs,q,voices,fileName,outMode);
   lastResult=r;
   const dur=(tm.toSec(B)-tm.toSec(A))/rate();
   $('durT').textContent=fmtT(dur);
   const ms=melodyStats(segs);
+  const lim=hz(maxPitch(q));
+  $('over').style.left=fx(lim)+'%';
   if(ms){
     const f=n=>Math.round(hz(n)), m=hz(ms.med);
-    const zone=m<300?'low, sounds quiet':m<600?'fairly low':m<=3000?'well audible':'very high';
-    $('trSub').textContent=`Melody ${f(ms.lo)}–${f(ms.hi)} Hz, mostly around ${f(ms.med)} Hz: ${zone}.`;
-  } else $('trSub').textContent='Semitones. ±12 = one octave.';
+    $('mel').style.left=fx(hz(ms.lo))+'%'; $('mel').style.width=Math.max(1,fx(hz(ms.hi))-fx(hz(ms.lo)))+'%';
+    const zone=m<300?'Low: sounds quiet.':m<600?'A bit low.':m<=3000?'Easy to hear.':'Very high.';
+    $('trSub').textContent=`Melody: ${f(ms.lo)}–${f(ms.hi)} Hz. ${zone} Striped = too high for this printer.`;
+    const e=audibleShift(); $('autoTr').disabled=!e;
+    $('autoTr').textContent=e?`Make it louder: move ${e>0?'up':'down'} ${Math.abs(e/12)} octave${Math.abs(e)>12?'s':''}`:'Already in the best range';
+  } else { $('trSub').textContent='No notes in the selected range.'; $('autoTr').disabled=true }
   const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
   $('dl').disabled=$('copy').disabled=!pitched; $('savemid').disabled=false;
   setDlHint(pitched?'':'The selected range contains no notes. Widen the range in step 2 ("Whole song" resets it).');
@@ -1135,10 +1165,9 @@ cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',en
 // ---------- controls ----------
 function voicesText(){
   const xy=$('kin').value==='corexy';
-  $('voicesO').textContent=voices===2?'2':voices===3?'unison':'1';
-  $('voicesSub').textContent=voices===2?'Melody plus a second voice on the second motor.'
-    :voices===3?(xy?'On CoreXY this equals One: a pure X move already drives both motors with the melody.':'Melody on the X and Y motors at once. Louder, the bed moves too.')
-    :(xy?'Melody on both XY motors (pure X move).':'Melody on the X motor only. Unison is louder.');
+  $('optU').classList.toggle('hidden',xy);
+  if(xy&&voices===3){ setVoices(1); return }
+  $('o1').textContent=xy?'Both motors play the tune. Loudest.':'The X motor plays the tune.';
 }
 function setVoices(n){
   voices=n; store.set({voices:n});
@@ -1155,6 +1184,7 @@ $('voice2').onchange=()=>{ v2mode=$('voice2').value; liveChange() };
 $('srcMode').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.disabled) return; const t=player?posTick():null; setSrcMode(b.dataset.v); if(t!==null) play(t) };
 ['tempo','vari','transpose'].forEach(id=>$(id).addEventListener('input',liveChange));
 for(const b of document.querySelectorAll('[data-tr]')) b.onclick=()=>{ $('transpose').value=(parseInt($('transpose').value)||0)+(+b.dataset.tr); liveChange() };
+for(const b of document.querySelectorAll('[data-reset]')) b.onclick=()=>{ $(b.dataset.reset).value=100; liveChange() };
 $('tempo').addEventListener('dblclick',()=>{ $('tempo').value=100; liveChange() });
 $('vari').addEventListener('dblclick',()=>{ $('vari').value=100; liveChange() });
 $('track').onchange=loadTrack;
@@ -1162,8 +1192,7 @@ $('autoTr').onclick=()=>{
   if(!midi) return;
   const e=audibleShift();
   if(e){ $('transpose').value=(parseInt($('transpose').value)||0)+e; liveChange() }
-  const b=$('autoTr'); b.textContent=e?`Moved ${e>0?'+':''}${e} semitones`:'Already in the most audible octave';
-  clearTimeout(b._t); b._t=setTimeout(()=>{ b.textContent='Auto: most audible octave' },1800);
+
 };
 $('barA').onchange=()=>setCrop((num('barA',1)-1)*tpb,B);
 $('barB').onchange=()=>setCrop(A,(num('barB',1)-1)*tpb);
