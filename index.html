@@ -113,6 +113,11 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .ctl input[type=range]{padding:0;border:none;background:none;accent-color:var(--accent);margin:8px 0 2px}
 .stepper{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap}
 .stepper button{padding:5px 8px;flex:1;min-width:40px}
+.crop2{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px}
+.crop2 input{width:80px}
+.check.small{font-size:13px}
+.fine{margin-top:12px}
+.fine .controls{margin-top:4px}
 .aim{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
 .aim .seg{flex:1}
 .aud{width:100%;margin-top:8px;padding:7px 10px;font-size:13px}
@@ -257,36 +262,19 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
 
       <div class="controls">
         <div class="ctl">
+          <div class="head"><span>How loud?</span><output id="trO">original</output></div>
+          <div class="seg full" id="aim" style="margin-top:8px">
+            <button data-v="original">Original</button><button data-v="natural" class="on">Clear</button><button data-v="loud">Loud</button><button data-v="max">Loudest</button>
+          </div>
+          <div class="freq" aria-hidden="true"><div class="sweet" id="sweet"></div><div class="over" id="over"></div><div class="mel" id="mel"></div></div>
+          <div class="freqlbl"><span style="left:0">quiet</span><span id="lblSweet" style="transform:translateX(-50%)">easy to hear</span><span style="right:0">too high</span></div>
+          <div class="sub" id="aimSub">Load a file to see where the melody sits.</div>
+        </div>
+        <div class="ctl">
           <div class="head"><span>Speed</span><output id="tempoO">100 %</output></div>
           <input type="range" id="tempo" min="25" max="200" step="1" value="100" aria-label="Speed in percent">
-          <div class="sub">Plays faster or slower. The notes stay the same.</div>
+          <div class="sub">Faster or slower. The notes stay the same.</div>
           <button class="reset hidden" data-reset="tempo">Reset to 100 %</button>
-        </div>
-        <div class="ctl">
-          <div class="head"><span>Speed + pitch</span><output id="variO">100 %</output></div>
-          <input type="range" id="vari" min="50" max="200" step="1" value="100" aria-label="Speed and pitch in percent">
-          <div class="sub" id="variSub">Faster also means higher, like a tape played fast.</div>
-          <button class="reset hidden" data-reset="vari">Reset to 100 %</button>
-        </div>
-        <div class="ctl">
-          <div class="head"><span>Pitch</span><output id="trO">original</output></div>
-          <div class="freq" aria-hidden="true"><div class="sweet" id="sweet"></div><div class="over" id="over"></div><div class="mel" id="mel"></div></div>
-          <div class="freqlbl"><span style="left:0">quiet</span><span id="lblSweet" style="transform:translateX(-50%)">easy to hear</span><span style="right:0">high</span></div>
-          <div class="sub" id="trSub">Load a file to see where the melody sits.</div>
-          <div class="aim"><span>Aim for</span>
-            <div class="seg full" id="aim">
-              <button data-v="natural" class="on" title="Melody around 1 kHz, where the ear is most sensitive">Natural</button>
-              <button data-v="loud" title="Melody at about half the printer's top speed">Loud</button>
-              <button data-v="max" title="Every note is moved into the printer's fastest octave">Max</button>
-            </div>
-          </div>
-          <div class="sub" id="aimSub">Keeps the melody as written, centered where the ear is most sensitive.</div>
-          <button id="autoTr" class="primary aud">Make it louder: move to the best range</button>
-          <div class="pitchrow">
-            <button data-tr="-12" aria-label="Octave down">↓ Octave</button><button data-tr="12" aria-label="Octave up">↑ Octave</button>
-            <button data-tr="-1" aria-label="Half step down">↓ Half step</button><button data-tr="1" aria-label="Half step up">↑ Half step</button>
-          </div>
-          <input type="number" id="transpose" value="0" step="1" class="hidden" aria-hidden="true">
         </div>
         <div class="ctl">
           <div class="head"><span>What the motors play</span></div>
@@ -301,18 +289,42 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
             <option value="second">Second part: harmony (next note down)</option>
           </select>
         </div>
+        <div class="ctl">
+          <div class="head"><span>Part of the song</span></div>
+          <div class="crop2">Bars <input type="number" id="barA" min="1" step="1" value="1" aria-label="First bar"> to <input type="number" id="barB" min="1" step="1" value="1" aria-label="End bar (exclusive)"></div>
+          <div class="pitchrow">
+            <button id="setA">Start here</button><button id="setB">End here</button>
+          </div>
+          <button id="reset" class="reset" style="width:100%">Whole song</button>
+          <div class="sub">"Start/End here" use the blue playback position. Or drag the dark flags in the note view.</div>
+          <div class="row" style="margin-top:8px;gap:14px">
+            <label class="check small"><input type="checkbox" id="snap" checked> Snap to bars</label>
+            <label class="check small"><input type="checkbox" id="stopB" checked> Stop at end</label>
+          </div>
+        </div>
       </div>
 
-      <div class="crop">
-        <b>Range</b> Bar <input type="number" id="barA" min="1" step="1" value="1" aria-label="Start bar"> to
-        <input type="number" id="barB" min="1" step="1" value="1" aria-label="End bar (exclusive)">
-        <button id="setA">Start = position</button><button id="setB">End = position</button><button id="reset">Whole song</button>
-      </div>
-      <div class="row" style="margin-top:10px;gap:18px">
-        <label class="check"><input type="checkbox" id="snap" checked> Snap markers to bars</label>
-        <label class="check"><input type="checkbox" id="stopB" checked> Stop at end marker</label>
-      </div>
-      <p class="hint">Click the view to set the position. Drag to scrub: during playback it jumps along, when stopped you hear the note under the pointer. The dark flags at the top mark the start and end of the range and can be dragged. Keys: Space = play/pause, ← → = one bar, Home = back to start. The end bar is exclusive: start 5, end 9 = bars 5 to 8.</p>
+      <details class="fine">
+        <summary>Fine-tune pitch</summary>
+        <div class="controls">
+          <div class="ctl">
+            <div class="head"><span>Shift notes</span><output id="trManO">0</output></div>
+            <div class="pitchrow">
+              <button data-tr="-12">↓ Octave</button><button data-tr="12">↑ Octave</button>
+              <button data-tr="-1">↓ Half step</button><button data-tr="1">↑ Half step</button>
+            </div>
+            <input type="number" id="transpose" value="0" step="1" class="hidden" aria-hidden="true">
+            <div class="sub">Added on top of "How loud?".</div>
+          </div>
+          <div class="ctl">
+            <div class="head"><span>Speed + pitch</span><output id="variO">100 %</output></div>
+            <input type="range" id="vari" min="50" max="200" step="1" value="100" aria-label="Speed and pitch in percent">
+            <div class="sub" id="variSub">Faster also means higher, like a tape played fast.</div>
+            <button class="reset hidden" data-reset="vari">Reset to 100 %</button>
+          </div>
+        </div>
+      </details>
+      <p class="hint">Click the note view to jump there · Space = play/pause · ← → = one bar</p>
       <div class="status" id="status"></div>
     </div>
   </section>
@@ -785,7 +797,8 @@ let voices=1, v2mode='bass', srcMode='printer', preset='voice', outMode='file', 
 const tempoF=()=>num('tempo',100)/100;
 const vari=()=>num('vari',100)/100;
 const rate=()=>tempoF()*vari();
-const shift=()=>(parseInt($('transpose').value)||0)+12*Math.log2(vari());
+let autoOct=0;   // octave shift chosen by "How loud?"
+const shift=()=>(parseInt($('transpose').value)||0)+autoOct+12*Math.log2(vari());
 const total=()=>Math.max(tpb,Math.ceil(endTick/tpb)*tpb);
 const cur=()=>PRINTERS[+$('model').value];
 
@@ -1006,7 +1019,7 @@ function melodyStats(segs){
 }
 function aimTarget(){ const q=P(); return aim==='loud'?midiOf(0.5*q.vmax*q.fsX):AUD_TARGET }
 function audibleShift(){
-  if(aim==='max') return 0;
+  if(aim==='max'||aim==='original') return 0;
   const q=P(), segs=segsFor(A,B), st=melodyStats(segs); if(!st) return 0;
   let best=0, bestKey=[Infinity,Infinity,Infinity];
   for(let e=-48;e<=48;e+=12){
@@ -1026,7 +1039,11 @@ function compute(){
   $('variSub').textContent=Math.abs(sh)<0.005?'Faster also means higher, like a tape played fast.':
     `Notes ${sh>0?'+':''}${sh.toFixed(1)} half steps higher, ${v.toFixed(2)}× as fast.`;
   const tr=parseInt($('transpose').value)||0;
-  $('trO').textContent=aim==='max'?'fastest octave':!tr?'original':(tr%12===0?`${tr>0?'+':''}${tr/12} octave${Math.abs(tr)>12?'s':''}`:`${tr>0?'+':''}${tr} half steps`);
+  if(midi){   // auto octave from the original notes, so manual shifts add on top instead of being undone
+    const el=$('transpose'), man=el.value; el.value=0; autoOct=0; autoOct=audibleShift(); el.value=man }
+  const tot=tr+autoOct;
+  $('trManO').textContent=tr?`${tr>0?'+':''}${tr}`:'0';
+  $('trO').textContent=aim==='max'?'fastest octave':!tot?'original pitch':(tot%12===0?`${tot>0?'+':''}${tot/12} octave${Math.abs(tot)>12?'s':''}`:`${tot>0?'+':''}${tot} half steps`);
   for(const id of ['tempo','vari']) document.querySelector(`[data-reset="${id}"]`).classList.toggle('hidden',num(id,100)===100);
   if(!midi){ setDlHint('Load a MIDI or audio file in step 1 to enable the download.'); draw(); return }
   const q=P(), segs=segsFor(A,B), r=buildGcode(segs,q,voices,fileName,outMode);
@@ -1039,12 +1056,13 @@ function compute(){
   if(ms){
     const f=n=>Math.round(hz(n)), m=hz(ms.med);
     $('mel').style.left=fx(hz(ms.lo))+'%'; $('mel').style.width=Math.max(1,fx(hz(ms.hi))-fx(hz(ms.lo)))+'%';
-    const zone=m<300?'Low: sounds quiet.':m<600?'A bit low.':m<=3000?'Easy to hear.':'Very high.';
-    $('trSub').textContent=`Melody: ${f(ms.lo)}–${f(ms.hi)} Hz. ${zone} Striped = too high for this printer.`;
-    const e=audibleShift(); $('autoTr').disabled=!e;
-    $('autoTr').textContent=aim==='max'?'Every note is in the fastest octave'
-      :e?`Move ${e>0?'up':'down'} ${Math.abs(e/12)} octave${Math.abs(e)>12?'s':''} for ${aim==='loud'?'fast, loud moves':'the most audible range'}`:'Already in the best range';
-  } else { $('trSub').textContent='No notes in the selected range.'; $('autoTr').disabled=true }
+    const oct=autoOct?`${Math.abs(autoOct/12)} octave${Math.abs(autoOct)>12?'s':''} ${autoOct>0?'higher':'lower'}`:'';
+    $('aimSub').textContent={
+      original:`Notes as written: ${f(ms.lo)}–${f(ms.hi)} Hz.${m<400?' Low notes sound quiet on a printer.':''}`,
+      natural:`${oct?'Plays '+oct:'Already in range'}, around ${f(ms.med)} Hz where the ear is most sensitive.`,
+      loud:`${oct?'Plays '+oct:'Already fast'}: fast moves, clearly louder.`,
+      max:'Every note in the fastest octave. Loudest, some notes jump an octave.'}[aim];
+  } else $('aimSub').textContent='No notes in the selected part.';
   const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
   $('dl').disabled=$('copy').disabled=!pitched; $('savemid').disabled=false;
   setDlHint(pitched?'':'The selected range contains no notes. Widen the range in step 2 ("Whole song" resets it).');
@@ -1235,15 +1253,11 @@ $('tempo').addEventListener('dblclick',()=>{ $('tempo').value=100; liveChange() 
 $('vari').addEventListener('dblclick',()=>{ $('vari').value=100; liveChange() });
 $('track').onchange=loadTrack;
 $('zOn').onchange=()=>{ store.set({zOn:$('zOn').checked}); liveChange() };
-const AIM_TXT={
-  natural:'Keeps the melody as written, centered where the ear is most sensitive.',
-  loud:'Keeps the melody as written, but plays it at about half the top speed. Faster moves are louder.',
-  max:'Moves every note into the fastest octave the printer can play. Loudest, but some notes jump an octave.'};
 function setAim(v){
   aim=v; store.set({aim:v});
   for(const b of document.querySelectorAll('[data-tr="-12"],[data-tr="12"]')){ b.disabled=v==='max'; b.title=v==='max'?'Max already picks the octave for every note':'' }
   for(const b of $('aim').children) b.classList.toggle('on',b.dataset.v===v);
-  $('aimSub').textContent=AIM_TXT[v]; liveChange();
+  liveChange();
 }
 $('aim').onclick=e=>{ const b=e.target.closest('button'); if(b) setAim(b.dataset.v) };
 $('loudTest').onclick=()=>{
@@ -1253,12 +1267,7 @@ $('loudTest').onclick=()=>{
   download(r.text,`loudness-test_${slug(cur().b+' '+cur().m.replace(/\(.*?\)/g,''))}.gcode`);
   $('out').textContent=`Loudness test: ${list.length} notes, 1.5 s each, low to high:\n${list.map((t,i)=>`${i+1}. ${t}`).join('\n')}\nListen which one is loudest. Natural ≈ note 4–5, Loud and Max use the fast end.`;
 };
-$('autoTr').onclick=()=>{
-  if(!midi) return;
-  const e=audibleShift();
-  if(e){ $('transpose').value=(parseInt($('transpose').value)||0)+e; liveChange() }
 
-};
 $('barA').onchange=()=>setCrop((num('barA',1)-1)*tpb,B);
 $('barB').onchange=()=>setCrop(A,(num('barB',1)-1)*tpb);
 $('reset').onclick=()=>setCrop(0,total());
