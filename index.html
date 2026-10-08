@@ -113,6 +113,7 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .ctl input[type=range]{padding:0;border:none;background:none;accent-color:var(--accent);margin:8px 0 2px}
 .stepper{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap}
 .stepper button{padding:5px 8px;flex:1;min-width:40px}
+.aud{width:100%;margin-top:8px;padding:7px 10px;font-size:13px}
 .stepper input{text-align:center;width:58px;flex:none;padding:6px}
 .crop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:14px}
 .crop input[type=number]{width:84px}
@@ -251,11 +252,12 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
             <input type="number" id="transpose" value="0" step="1" min="-48" max="48" aria-label="Semitones">
             <button data-tr="1">+1</button><button data-tr="12" title="One octave up">+12</button>
           </div>
-          <div class="sub">Semitones. ±12 = one octave.</div>
+          <div class="sub" id="trSub">Semitones. ±12 = one octave.</div>
+          <button id="autoTr" class="aud">Auto: most audible octave</button>
         </div>
         <div class="ctl">
           <div class="head"><span>Voices</span><output id="voicesO">1</output></div>
-          <div class="seg full" id="voices" style="margin-top:8px"><button data-v="1" class="on">One voice</button><button data-v="2">Two voices</button></div>
+          <div class="seg full" id="voices" style="margin-top:8px"><button data-v="1" class="on">One</button><button data-v="3">Unison</button><button data-v="2">Two</button></div>
           <div class="sub" id="voicesSub">Plays the highest note.</div>
           <select id="voice2" class="hidden" style="margin-top:6px" aria-label="Second voice">
             <option value="bass">2nd voice: bass</option>
@@ -549,14 +551,15 @@ function segMotion(seg, P, voices){
   const calc=(a,b)=>{
     const fa=a===null?0:hz(a), fb=b===null?0:hz(b);
     if(P.kin==='corexy'){
-      if(voices===1) return {vx:fa/P.fsX, vy:0};
+      if(voices!==2) return {vx:fa/P.fsX, vy:0};   // one voice / unison: pure X drives both motors
       const sa=fa/P.fsX, sb=fb/P.fsX;           // belt speed of motor A and B
       return {vx:(sa+sb)/2, vy:(sa-sb)/2};       // A = x+y, B = x-y
     }
+    if(voices===3) return {vx:fa/P.fsX, vy:fa/P.fsY};   // unison: melody on X and Y motors
     return {vx:fa/P.fsX, vy:fb/P.fsY};           // independent X and Y motors
   };
   const ok=m=>Math.abs(m.vx)<=P.vmax+1e-9&&Math.abs(m.vy)<=P.vmax+1e-9&&Math.hypot(m.vx,m.vy)<=P.vmax*1.0001;
-  let a=seg.a, b=voices>1?seg.b:null, dropA=false, dropB=false;
+  let a=seg.a, b=voices===2?seg.b:null, dropA=false, dropB=false;
   // drop each voice that is unreachable on its own, then the bass if only the combination fails
   if(a!==null&&!ok(calc(a,null))){ a=null; dropA=true }
   if(b!==null&&!ok(calc(null,b))){ b=null; dropB=true }
@@ -763,7 +766,7 @@ function initPrinters(){
   $('brand').value=PRINTERS[idx].b; fillModels(idx);
   if(saved.stealth) $('stealth').checked=true;
   if(saved.tune) $('tune').value=saved.tune;
-  if(saved.voices===2) setVoices(2);
+  if(saved.voices===2||saved.voices===3) setVoices(saved.voices);
 }
 function fillModels(sel){
   const b=$('brand').value;
@@ -799,7 +802,7 @@ function printerChanged(){
   if(q.kin==='corexy') notesTxt.push('CoreXY: with two voices, each of the two XY motors plays its own voice.');
   else notesTxt.push('Two voices: melody on X, second voice on Y. Y moves the bed, so the lower voice goes there.');
   $('pnote').textContent=notesTxt.filter(Boolean).join(' ');
-  howto(q);
+  howto(q); voicesText();
   compute();
 }
 function howto(q){
@@ -934,6 +937,22 @@ function setCrop(a,b){
 }
 
 let lastResult=null;
+const AUD_TARGET=84;   // ~C6 / 1 kHz: where the ear is sensitive and steppers still run smoothly
+function melodyStats(segs){
+  const v=segs.filter(x=>x.a!==null); if(!v.length) return null;
+  const tot=v.reduce((t,x)=>t+x.d,0), sorted=[...v].sort((x,y)=>x.a-y.a);
+  let acc=0, med=sorted[0].a; for(const x of sorted){ acc+=x.d; if(acc>=tot/2){ med=x.a; break } }
+  return {lo:sorted[0].a, hi:sorted[sorted.length-1].a, med};
+}
+function audibleShift(){
+  const q=P(), segs=segsFor(A,B), st=melodyStats(segs); if(!st) return 0;
+  let best=0, bestKey=[Infinity,Infinity];
+  for(let e=-48;e<=48;e+=12){
+    const key=[countSkipped(segs,q,voices,e), Math.abs(st.med+e-AUD_TARGET)];
+    if(key[0]<bestKey[0]||(key[0]===bestKey[0]&&key[1]<bestKey[1])){ best=e; bestKey=key }
+  }
+  return best;
+}
 function setDlHint(t){ const h=$('dlHint'); h.textContent=t; h.classList.toggle('hidden',!t); for(const id of ['dl','copy']) $(id).title=t }
 function compute(){
   // control readouts
@@ -948,6 +967,12 @@ function compute(){
   lastResult=r;
   const dur=(tm.toSec(B)-tm.toSec(A))/rate();
   $('durT').textContent=fmtT(dur);
+  const ms=melodyStats(segs);
+  if(ms){
+    const f=n=>Math.round(hz(n)), m=hz(ms.med);
+    const zone=m<300?'low, sounds quiet':m<600?'fairly low':m<=3000?'well audible':'very high';
+    $('trSub').textContent=`Melody ${f(ms.lo)}–${f(ms.hi)} Hz, mostly around ${f(ms.med)} Hz: ${zone}.`;
+  } else $('trSub').textContent='Semitones. ±12 = one octave.';
   const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
   $('dl').disabled=$('copy').disabled=!pitched; $('savemid').disabled=false;
   setDlHint(pitched?'':'The selected range contains no notes. Widen the range in step 2 ("Whole song" resets it).');
@@ -1036,7 +1061,7 @@ function play(from){
   } else {
     const sn=secNotes(from,to), q=P();
     const mk=()=>{const o=a.createOscillator(), g=a.createGain(); o.type='square'; g.gain.value=0; o.connect(g).connect(a.destination); return {o,g}};
-    const va=mk(), vb=voices>1?mk():null;
+    const va=mk(), vb=voices===2?mk():null;
     if(sn.length){
       let t=t0+Math.min(...sn.map(x=>x.s));
       for(const s of voiceSegs(sn,v2mode)){
@@ -1108,11 +1133,18 @@ function endDrag(){ if(drag==='seek'){ if(player) play(cursor); else scrubEnd() 
 cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
 
 // ---------- controls ----------
+function voicesText(){
+  const xy=$('kin').value==='corexy';
+  $('voicesO').textContent=voices===2?'2':voices===3?'unison':'1';
+  $('voicesSub').textContent=voices===2?'Melody plus a second voice on the second motor.'
+    :voices===3?(xy?'On CoreXY this equals One: a pure X move already drives both motors with the melody.':'Melody on the X and Y motors at once. Louder, the bed moves too.')
+    :(xy?'Melody on both XY motors (pure X move).':'Melody on the X motor only. Unison is louder.');
+}
 function setVoices(n){
   voices=n; store.set({voices:n});
   for(const b of $('voices').children) b.classList.toggle('on',+b.dataset.v===n);
-  $('voicesO').textContent=n; $('voice2').classList.toggle('hidden',n<2);
-  $('voicesSub').textContent=n===1?'Plays the highest note.':'Melody plus a second voice on the second motor.';
+  $('voice2').classList.toggle('hidden',n!==2);
+  voicesText();
   liveChange();
 }
 function setSrcMode(m){
@@ -1126,6 +1158,13 @@ for(const b of document.querySelectorAll('[data-tr]')) b.onclick=()=>{ $('transp
 $('tempo').addEventListener('dblclick',()=>{ $('tempo').value=100; liveChange() });
 $('vari').addEventListener('dblclick',()=>{ $('vari').value=100; liveChange() });
 $('track').onchange=loadTrack;
+$('autoTr').onclick=()=>{
+  if(!midi) return;
+  const e=audibleShift();
+  if(e){ $('transpose').value=(parseInt($('transpose').value)||0)+e; liveChange() }
+  const b=$('autoTr'); b.textContent=e?`Moved ${e>0?'+':''}${e} semitones`:'Already in the most audible octave';
+  clearTimeout(b._t); b._t=setTimeout(()=>{ b.textContent='Auto: most audible octave' },1800);
+};
 $('barA').onchange=()=>setCrop((num('barA',1)-1)*tpb,B);
 $('barB').onchange=()=>setCrop(A,(num('barB',1)-1)*tpb);
 $('reset').onclick=()=>setCrop(0,total());
@@ -1206,7 +1245,7 @@ $('dl').onclick=()=>{
   const name=`${fileName}${suffix()}_${slug(cur().b+' '+cur().m.replace(/\(.*?\)/g,''))}${outMode==='snippet'?'_start-snippet':''}.gcode`;
   download(r.text,name);
   $('steps').children[3].classList.add('done');
-  $('out').textContent=`${name}\n${r.text.split('\n').length} lines · ${voices} ${voices===1?'voice':'voices'} · ${q.name}`+
+  $('out').textContent=`${name}\n${r.text.split('\n').length} lines · ${voices===2?'2 voices':voices===3?'unison':'1 voice'} · ${q.name}`+
     ((r.skipA+r.skipB)?` · ${r.skipA+r.skipB} too-high sections played as rests`:'');
 };
 $('calib').onclick=()=>{
