@@ -113,6 +113,8 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .ctl input[type=range]{padding:0;border:none;background:none;accent-color:var(--accent);margin:8px 0 2px}
 .stepper{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap}
 .stepper button{padding:5px 8px;flex:1;min-width:40px}
+.aim{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted)}
+.aim .seg{flex:1}
 .aud{width:100%;margin-top:8px;padding:7px 10px;font-size:13px}
 .stepper input{text-align:center;width:58px;flex:none;padding:6px}
 .crop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:14px}
@@ -271,6 +273,14 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
           <div class="freq" aria-hidden="true"><div class="sweet" id="sweet"></div><div class="over" id="over"></div><div class="mel" id="mel"></div></div>
           <div class="freqlbl"><span style="left:0">quiet</span><span id="lblSweet" style="transform:translateX(-50%)">easy to hear</span><span style="right:0">high</span></div>
           <div class="sub" id="trSub">Load a file to see where the melody sits.</div>
+          <div class="aim"><span>Aim for</span>
+            <div class="seg full" id="aim">
+              <button data-v="natural" class="on" title="Melody around 1 kHz, where the ear is most sensitive">Natural</button>
+              <button data-v="loud" title="Melody at about half the printer's top speed">Loud</button>
+              <button data-v="max" title="Every note is moved into the printer's fastest octave">Max</button>
+            </div>
+          </div>
+          <div class="sub" id="aimSub">Keeps the melody as written, centered where the ear is most sensitive.</div>
           <button id="autoTr" class="primary aud">Make it louder: move to the best range</button>
           <div class="pitchrow">
             <button data-tr="-12" aria-label="Octave down">↓ Octave</button><button data-tr="12" aria-label="Octave up">↑ Octave</button>
@@ -365,6 +375,8 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
     <div class="out" id="out"></div>
     <div class="tools">
       <button class="link" id="calib">Test tone G-code</button>
+      <span aria-hidden="true">·</span>
+      <button class="link" id="loudTest">Loudness test G-code</button>
       <span aria-hidden="true">·</span>
       <button class="link" id="savemid" disabled>Save range as MIDI</button>
     </div>
@@ -767,7 +779,7 @@ const store={get(){try{return JSON.parse(localStorage.getItem('steppersong')||'{
 // ---------- state ----------
 let midi=null, tm=null, fileName='song', srcType=null, notes=[], A=0, B=0, tpb=1920, endTick=0, cursor=0;
 let audioBuf=null, env=null, ac=null, player=null, raf=0, drag=null, scrub=null, lastRestart=0;
-let voices=1, v2mode='bass', srcMode='printer', preset='voice', outMode='file';
+let voices=1, v2mode='bass', srcMode='printer', preset='voice', outMode='file', aim='natural';
 
 // ---------- derived values ----------
 const tempoF=()=>num('tempo',100)/100;
@@ -789,10 +801,13 @@ function P(){
     hz:Math.max(5,num('hzI',60)), zOn:$('zOn').checked&&num('fsZ',0)>0&&num('vZ',0)>0};
 }
 
+// "Max": fold every note into the printer's top octave (95 % of max speed and the octave below)
+function topPitch(){ const q=P(); return midiOf(0.95*q.vmax*q.fsX) }
+function fold(n,top){ while(n>top) n-=12; while(n<=top-12) n+=12; return n }
 function secNotes(from,to){
-  const t0=tm.toSec(from), r=rate(), sh=shift();
+  const t0=tm.toSec(from), r=rate(), sh=shift(), top=aim==='max'?topPitch():null;
   return notes.filter(x=>x.e>from&&x.s<to).map(x=>({
-    s:(tm.toSec(Math.max(x.s,from))-t0)/r, e:(tm.toSec(Math.min(x.e,to))-t0)/r, n:x.n+sh}))
+    s:(tm.toSec(Math.max(x.s,from))-t0)/r, e:(tm.toSec(Math.min(x.e,to))-t0)/r, n:top===null?x.n+sh:fold(x.n+sh,top)}))
     .filter(x=>x.e>x.s);
 }
 const segsFor=(from,to)=>voiceSegs(secNotes(from,to),v2mode);
@@ -807,6 +822,7 @@ function initPrinters(){
   if(saved.stealth) $('stealth').checked=true;
   if(saved.tune) $('tune').value=saved.tune;
   if(saved.zOn) $('zOn').checked=true;
+  if(saved.aim&&saved.aim!=='natural') setTimeout(()=>setAim(saved.aim));
   if(saved.voices===2||saved.voices===3) setVoices(saved.voices);
 }
 function fillModels(sel){
@@ -988,13 +1004,15 @@ function melodyStats(segs){
   let acc=0, med=sorted[0].a; for(const x of sorted){ acc+=x.d; if(acc>=tot/2){ med=x.a; break } }
   return {lo:sorted[0].a, hi:sorted[sorted.length-1].a, med};
 }
+function aimTarget(){ const q=P(); return aim==='loud'?midiOf(0.5*q.vmax*q.fsX):AUD_TARGET }
 function audibleShift(){
+  if(aim==='max') return 0;
   const q=P(), segs=segsFor(A,B), st=melodyStats(segs); if(!st) return 0;
   let best=0, bestKey=[Infinity,Infinity,Infinity];
   for(let e=-48;e<=48;e+=12){
     // with Z on, keep the bed motors playing: prefer octaves where Z drops no notes
     let zd=0; if(q.zOn) for(const x of segs){ if(x.a!==null&&segMotion({d:x.d,a:x.a+e,b:null},q,voices).dropZ) zd++ }
-    const key=[countSkipped(segs,q,voices,e), zd, Math.abs(st.med+e-AUD_TARGET)];
+    const key=[countSkipped(segs,q,voices,e), zd, Math.abs(st.med+e-aimTarget())];
     if(key[0]<bestKey[0]||(key[0]===bestKey[0]&&(key[1]<bestKey[1]||(key[1]===bestKey[1]&&key[2]<bestKey[2])))){ best=e; bestKey=key }
   }
   return best;
@@ -1008,7 +1026,7 @@ function compute(){
   $('variSub').textContent=Math.abs(sh)<0.005?'Faster also means higher, like a tape played fast.':
     `Notes ${sh>0?'+':''}${sh.toFixed(1)} half steps higher, ${v.toFixed(2)}× as fast.`;
   const tr=parseInt($('transpose').value)||0;
-  $('trO').textContent=!tr?'original':(tr%12===0?`${tr>0?'+':''}${tr/12} octave${Math.abs(tr)>12?'s':''}`:`${tr>0?'+':''}${tr} half steps`);
+  $('trO').textContent=aim==='max'?'fastest octave':!tr?'original':(tr%12===0?`${tr>0?'+':''}${tr/12} octave${Math.abs(tr)>12?'s':''}`:`${tr>0?'+':''}${tr} half steps`);
   for(const id of ['tempo','vari']) document.querySelector(`[data-reset="${id}"]`).classList.toggle('hidden',num(id,100)===100);
   if(!midi){ setDlHint('Load a MIDI or audio file in step 1 to enable the download.'); draw(); return }
   const q=P(), segs=segsFor(A,B), r=buildGcode(segs,q,voices,fileName,outMode);
@@ -1024,7 +1042,8 @@ function compute(){
     const zone=m<300?'Low: sounds quiet.':m<600?'A bit low.':m<=3000?'Easy to hear.':'Very high.';
     $('trSub').textContent=`Melody: ${f(ms.lo)}–${f(ms.hi)} Hz. ${zone} Striped = too high for this printer.`;
     const e=audibleShift(); $('autoTr').disabled=!e;
-    $('autoTr').textContent=e?`Make it louder: move ${e>0?'up':'down'} ${Math.abs(e/12)} octave${Math.abs(e)>12?'s':''}`:'Already in the best range';
+    $('autoTr').textContent=aim==='max'?'Every note is in the fastest octave'
+      :e?`Move ${e>0?'up':'down'} ${Math.abs(e/12)} octave${Math.abs(e)>12?'s':''} for ${aim==='loud'?'fast, loud moves':'the most audible range'}`:'Already in the best range';
   } else { $('trSub').textContent='No notes in the selected range.'; $('autoTr').disabled=true }
   const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
   $('dl').disabled=$('copy').disabled=!pitched; $('savemid').disabled=false;
@@ -1216,6 +1235,24 @@ $('tempo').addEventListener('dblclick',()=>{ $('tempo').value=100; liveChange() 
 $('vari').addEventListener('dblclick',()=>{ $('vari').value=100; liveChange() });
 $('track').onchange=loadTrack;
 $('zOn').onchange=()=>{ store.set({zOn:$('zOn').checked}); liveChange() };
+const AIM_TXT={
+  natural:'Keeps the melody as written, centered where the ear is most sensitive.',
+  loud:'Keeps the melody as written, but plays it at about half the top speed. Faster moves are louder.',
+  max:'Moves every note into the fastest octave the printer can play. Loudest, but some notes jump an octave.'};
+function setAim(v){
+  aim=v; store.set({aim:v});
+  for(const b of document.querySelectorAll('[data-tr="-12"],[data-tr="12"]')){ b.disabled=v==='max'; b.title=v==='max'?'Max already picks the octave for every note':'' }
+  for(const b of $('aim').children) b.classList.toggle('on',b.dataset.v===v);
+  $('aimSub').textContent=AIM_TXT[v]; liveChange();
+}
+$('aim').onclick=e=>{ const b=e.target.closest('button'); if(b) setAim(b.dataset.v) };
+$('loudTest').onclick=()=>{
+  const q=P(), top=Math.floor(maxPitch(q)), segs=[], list=[];
+  for(let n=48;n<=top;n+=12){ segs.push({d:1.5,a:n,b:null},{d:0.5,a:null,b:null}); list.push(`${noteName(n)} ${Math.round(hz(n))} Hz = ${Math.round(hz(n)/q.fsX)} mm/s`) }
+  const r=buildGcode(segs,q,1,'Loudness test: one note per octave, getting faster');
+  download(r.text,`loudness-test_${slug(cur().b+' '+cur().m.replace(/\(.*?\)/g,''))}.gcode`);
+  $('out').textContent=`Loudness test: ${list.length} notes, 1.5 s each, low to high:\n${list.map((t,i)=>`${i+1}. ${t}`).join('\n')}\nListen which one is loudest. Natural ≈ note 4–5, Loud and Max use the fast end.`;
+};
 $('autoTr').onclick=()=>{
   if(!midi) return;
   const e=audibleShift();
