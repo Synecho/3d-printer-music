@@ -138,6 +138,17 @@ canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:
 .out{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--muted);margin-top:12px;white-space:pre-wrap}
 .howto{margin:14px 0 0;padding-left:20px;font-size:14px}
 .howto li{margin:4px 0}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.tile{display:flex;flex-direction:column;align-items:flex-start;gap:3px;text-align:left;padding:12px 14px;border-radius:10px;font-weight:400;background:var(--field)}
+.tile b{font-size:15px}
+.tile span{font-size:13px;color:var(--muted)}
+.tile.on{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+.actions button{flex:1;min-width:180px}
+.tools{display:flex;gap:10px;align-items:center;margin-top:14px;font-size:14px;color:var(--muted)}
+.tools .link{font-weight:500}
+.out:empty{display:none}
+.howto{margin:0}
 footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-height:1.6}
 .hidden{display:none!important}
 @media (max-width:560px){ .time{min-width:0} h1{font-size:22px} }
@@ -310,18 +321,24 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
   <!-- 4 export -->
   <section class="card" id="c-export">
     <h2><span class="num">4</span>Export</h2>
-    <div class="row" style="margin-bottom:14px">
-      <span style="font-size:14px;font-weight:600">Output</span>
-      <div class="seg" id="outMode"><button data-v="file" class="on">Standalone file</button><button data-v="snippet">Snippet for slicer start G-code</button></div>
+    <div class="tiles" id="outMode" role="radiogroup" aria-label="Output type">
+      <button data-v="file" class="tile on" role="radio" aria-checked="true"><b>Print file</b><span>Runs on its own. Start it on the printer like any print.</span></button>
+      <button data-v="snippet" class="tile" role="radio" aria-checked="false"><b>Start G-code snippet</b><span>Paste into your slicer. Plays before every print.</span></button>
     </div>
-    <div class="row">
-      <button id="copy" class="primary big hidden">Copy snippet</button>
+    <div class="actions">
       <button id="dl" class="primary big" disabled>Download G-code</button>
-      <button id="calib">Test tone G-code</button>
-      <button id="savemid" disabled>Save range as MIDI</button>
+      <button id="copy" class="big" disabled>Copy to clipboard</button>
     </div>
     <div class="out" id="out"></div>
-    <ol class="howto" id="howto"></ol>
+    <div class="tools">
+      <button class="link" id="calib">Test tone G-code</button>
+      <span aria-hidden="true">·</span>
+      <button class="link" id="savemid" disabled>Save range as MIDI</button>
+    </div>
+    <details>
+      <summary>How to start it</summary>
+      <ol class="howto" id="howto"></ol>
+    </details>
     <details>
       <summary>Printer sounds off?</summary>
       <p class="hint" style="margin-top:0">1. Print the test tone G-code: 2 s A4 (440 Hz), a pause, 2 s A5 (880 Hz). Measure it with a tuner app on your phone.<br>
@@ -924,7 +941,7 @@ function compute(){
   const dur=(tm.toSec(B)-tm.toSec(A))/rate();
   $('durT').textContent=fmtT(dur);
   const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
-  $('dl').disabled=!pitched; $('savemid').disabled=false;
+  $('dl').disabled=$('copy').disabled=!pitched; $('savemid').disabled=false;
   if(!pitched){ st.className='status warn'; st.textContent='No notes in the selected range.'; draw(); return }
   const skipped=r.skipA+r.skipB;
   if(!skipped){
@@ -1153,10 +1170,12 @@ const slug=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/�
 const suffix=()=>((A===0&&B>=total())?'':`_T${+(A/tpb+1).toFixed(2)}-${+(B/tpb+1).toFixed(2)}`)+
   (Math.abs(vari()-1)<1e-6?'':`_v${Math.round(vari()*100)}`);
 
+let copyTimer=0;
+const copyLabel=()=>outMode==='snippet'?'Copy snippet':'Copy to clipboard';
 function setOutMode(m){
-  outMode=m; for(const b of $('outMode').children) b.classList.toggle('on',b.dataset.v===m);
+  outMode=m; for(const b of $('outMode').children){ b.classList.toggle('on',b.dataset.v===m); b.setAttribute('aria-checked',b.dataset.v===m) }
   $('dl').textContent=m==='snippet'?'Download snippet':'Download G-code';
-  $('copy').classList.toggle('hidden',m!=='snippet');
+  $('copy').textContent=copyLabel();
   printerChanged();
 }
 $('outMode').onclick=e=>{ const b=e.target.closest('button'); if(b) setOutMode(b.dataset.v) };
@@ -1167,8 +1186,11 @@ async function copyText(t){
 }
 $('copy').onclick=async()=>{
   compute(); const r=lastResult, ok=await copyText(r.text);
-  $('out').textContent=ok?`Snippet copied: ${r.text.split('\n').length} lines, from STEPPERSONG BEGIN to STEPPERSONG END. Paste it into your slicer's start G-code.`
-    :'Copying failed in this browser. Use "Download snippet" and paste the file contents instead.';
+  const lines=r.text.split('\n').length-1;
+  $('out').textContent=!ok?'Copying failed in this browser. Use the download button instead.'
+    :outMode==='snippet'?`Snippet copied: ${lines} lines, from STEPPERSONG BEGIN to STEPPERSONG END. Paste it into your slicer's start G-code.`
+    :`G-code copied: ${lines} lines. Paste it into a .gcode file, a terminal like OctoPrint/Mainsail, or anywhere you need it.`;
+  if(ok){ $('copy').textContent='Copied ✓'; clearTimeout(copyTimer); copyTimer=setTimeout(()=>{ $('copy').textContent=copyLabel() },1500) }
 };
 $('dl').onclick=()=>{
   compute(); const r=lastResult, q=P();
