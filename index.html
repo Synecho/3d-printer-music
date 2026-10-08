@@ -329,6 +329,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-
       <button id="dl" class="primary big" disabled>Download G-code</button>
       <button id="copy" class="big" disabled>Copy to clipboard</button>
     </div>
+    <p class="hint" id="dlHint">Load a MIDI or audio file in step 1 to enable the download.</p>
     <div class="out" id="out"></div>
     <div class="tools">
       <button class="link" id="calib">Test tone G-code</button>
@@ -927,6 +928,7 @@ function setCrop(a,b){
 }
 
 let lastResult=null;
+function setDlHint(t){ const h=$('dlHint'); h.textContent=t; h.classList.toggle('hidden',!t); for(const id of ['dl','copy']) $(id).title=t }
 function compute(){
   // control readouts
   const v=vari(), sh=12*Math.log2(v);
@@ -935,13 +937,14 @@ function compute(){
   $('variSub').textContent=Math.abs(sh)<0.005?'Tempo and pitch together, like a faster tape.':
     `Pitch ${sh>0?'+':''}${sh.toFixed(2)} semitones, tempo ×${v.toFixed(2)}.`;
   const tr=parseInt($('transpose').value)||0; $('trO').textContent=(tr>0?'+':'')+tr;
-  if(!midi){ draw(); return }
+  if(!midi){ setDlHint('Load a MIDI or audio file in step 1 to enable the download.'); draw(); return }
   const q=P(), segs=segsFor(A,B), r=buildGcode(segs,q,voices,fileName,outMode);
   lastResult=r;
   const dur=(tm.toSec(B)-tm.toSec(A))/rate();
   $('durT').textContent=fmtT(dur);
   const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
   $('dl').disabled=$('copy').disabled=!pitched; $('savemid').disabled=false;
+  setDlHint(pitched?'':'The selected range contains no notes. Widen the range in step 2 ("Whole song" resets it).');
   if(!pitched){ st.className='status warn'; st.textContent='No notes in the selected range.'; draw(); return }
   const skipped=r.skipA+r.skipB;
   if(!skipped){
