@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>StepperSong – 3D Printer Music: Convert MIDI &amp; Audio to G-code</title>
+<meta name="description" content="Make your 3D printer play music. Free browser tool that converts MIDI and audio files to G-code for stepper motor music. Works with Prusa, Bambu Lab, Creality, Voron, Klipper and Marlin printers.">
+<meta name="keywords" content="3d printer music, midi to gcode, stepper motor music, 3d printer song, gcode music, klipper music, marlin music, prusa music, bambu lab music">
+<meta property="og:title" content="StepperSong – 3D Printer Music">
+<meta property="og:description" content="Convert MIDI and audio to G-code that makes your 3D printer's stepper motors play music. Runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://synecho.github.io/3d-printer-music/">
+<link rel="canonical" href="https://synecho.github.io/3d-printer-music/">
+<style>
+:root{
+  --bg:#f3f1ec; --card:#ffffff; --ink:#1b1a17; --muted:#6c675d; --line:#e2ded5; --field:#f8f7f3;
+  --accent:#e2580c; --accent-ink:#fff; --accent-soft:#fde6d8;
+  --v2:#2563eb; --ok:#2f7a3d; --ok-soft:#e3f2e5; --warn:#a4380a; --warn-soft:#fbe4d8;
+  --shade:rgba(27,26,23,.5); --grid:rgba(27,26,23,.08); --wave:rgba(27,26,23,.12); --out:rgba(198,40,40,.10);
+  --handle:#1b1a17; --play:#2563eb; --radius:12px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#141311; --card:#1d1b18; --ink:#eeebe5; --muted:#9d978c; --line:#33302b; --field:#181715;
+    --accent:#ff7a33; --accent-ink:#1a0d04; --accent-soft:#3a2214;
+    --v2:#6ea0ff; --ok:#86c493; --ok-soft:#1d2e20; --warn:#ff9e6b; --warn-soft:#3a2216;
+    --shade:rgba(0,0,0,.55); --grid:rgba(255,255,255,.07); --wave:rgba(255,255,255,.10); --out:rgba(255,90,90,.10);
+    --handle:#eeebe5; --play:#6ea0ff;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141311; --card:#1d1b18; --ink:#eeebe5; --muted:#9d978c; --line:#33302b; --field:#181715;
+  --accent:#ff7a33; --accent-ink:#1a0d04; --accent-soft:#3a2214;
+  --v2:#6ea0ff; --ok:#86c493; --ok-soft:#1d2e20; --warn:#ff9e6b; --warn-soft:#3a2216;
+  --shade:rgba(0,0,0,.55); --grid:rgba(255,255,255,.07); --wave:rgba(255,255,255,.10); --out:rgba(255,90,90,.10);
+  --handle:#eeebe5; --play:#6ea0ff;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+main{max-width:980px;margin:0 auto;padding:28px 16px 56px}
+.top{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.logo{width:44px;height:44px;border-radius:12px;background:var(--accent);display:grid;place-items:center;flex:none}
+.logo svg{width:26px;height:26px}
+h1{font-size:26px;margin:0;letter-spacing:-.02em}
+.tag{color:var(--muted);margin:0 0 22px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;padding:0;margin:0 0 18px}
+.steps li{font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+.steps li.done{color:var(--ok);border-color:var(--ok)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+h2{font-size:17px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.num{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:700;display:grid;place-items:center}
+.muted{color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;color:var(--muted)}
+label.check{flex-direction:row;align-items:center;gap:8px;color:var(--ink);font-size:14px;cursor:pointer}
+label.check input{width:auto;margin:0}
+input,select{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible,.drop:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button{font:inherit;font-weight:600;border:1px solid var(--line);background:var(--field);color:var(--ink);border-radius:8px;padding:9px 14px;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--muted)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button.big{padding:13px 22px;font-size:16px}
+button.link{background:none;border:none;padding:0;color:var(--accent);text-decoration:underline}
+button:disabled{opacity:.45;cursor:not-allowed}
+details{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-weight:600;font-size:14px}
+details[open] summary{margin-bottom:12px}
+.hint{font-size:13px;color:var(--muted);margin:10px 0 0}
+
+/* drop zone */
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;
+  border:2px dashed var(--line);border-radius:var(--radius);padding:34px 16px;cursor:pointer;background:var(--field);transition:.15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{font-size:17px}
+.drop span{font-size:13px;color:var(--muted)}
+.chip{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--field);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.chip .badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent)}
+.chip .name{font-weight:600;word-break:break-all}
+.chip .grow{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--field)}
+.seg button{border:none;border-radius:0;padding:7px 12px;background:none;font-weight:500}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:var(--card);font-weight:600}
+.seg.full{display:flex;width:100%}
+.seg.full button{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border-radius:999px;padding:6px 14px;font-weight:500}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.progress{flex:1;min-width:120px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.progress div{height:100%;width:0;background:var(--accent);transition:width .1s}
+
+/* player */
+.empty{color:var(--muted);text-align:center;padding:28px 0}
+.trackrow{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:10px}
+.trackrow label{flex:1;min-width:220px}
+canvas#roll{width:100%;height:240px;display:block;border-radius:10px;background:var(--field);border:1px solid var(--line);touch-action:none;cursor:pointer}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:8px 2px 0}
+.legend i{display:inline-block;width:12px;height:8px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.transport{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--field)}
+.playbtn{width:46px;height:46px;border-radius:50%;padding:0;display:grid;place-items:center;background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.icon{width:38px;height:38px;padding:0;display:grid;place-items:center}
+.playbtn svg,.icon svg{width:18px;height:18px;fill:currentColor}
+.time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;min-width:150px}
+.time small{display:block;color:var(--muted);font-size:12px}
+.transport .sp{flex:1}
+.controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:14px}
+.ctl{border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.ctl .head{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;font-weight:600}
+.ctl .head output{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600;color:var(--accent)}
+.ctl .sub{font-size:12px;color:var(--muted);margin-top:2px}
+.ctl input[type=range]{padding:0;border:none;background:none;accent-color:var(--accent);margin:8px 0 2px}
+.stepper{display:flex;align-items:center;gap:5px;margin-top:6px;flex-wrap:wrap}
+.stepper button{padding:5px 8px;flex:1;min-width:40px}
+.stepper input{text-align:center;width:58px;flex:none;padding:6px}
+.crop{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px;font-size:14px}
+.crop input[type=number]{width:84px}
+.status{margin-top:14px;padding:10px 12px;border-radius:10px;font-size:14px}
+.status.ok{background:var(--ok-soft);color:var(--ok)}
+.status.warn{background:var(--warn-soft);color:var(--warn)}
+.status button{margin-left:8px;padding:5px 10px;font-size:13px}
+
+/* printer */
+.specs{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:14px}
+.spec{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.spec b{display:block;font-size:12px;color:var(--muted);font-weight:500}
+.spec span{font-weight:600;font-size:14px}
+.src{display:inline-block;margin-top:12px;font-size:12px;padding:3px 8px;border-radius:6px}
+.src.fw,.src.cfg{background:var(--ok-soft);color:var(--ok)}
+.src.com{background:var(--accent-soft);color:var(--accent)}
+.src.est,.src.man{background:var(--warn-soft);color:var(--warn)}
+.pnote{font-size:13px;margin:8px 0 0}
+.calc{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-top:10px}
+.calc label{width:150px}
+
+/* export */
+.out{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--muted);margin-top:12px;white-space:pre-wrap}
+.howto{margin:14px 0 0;padding-left:20px;font-size:14px}
+.howto li{margin:4px 0}
+footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px;line-height:1.6}
+.hidden{display:none!important}
+@media (max-width:560px){ .time{min-width:0} h1{font-size:22px} }
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M3 15v-4M7 18V6M11 14v-4M15 20V4M19 16V8" style="color:var(--accent-ink)"/></svg></div>
+    <h1>StepperSong</h1>
+  </div>
+  <p class="tag">Make your 3D printer's stepper motors play music. Load a MIDI or audio file, listen, pick your printer, download the G-code.</p>
+  <ol class="steps" id="steps"><li>1 Load file</li><li>2 Listen &amp; adjust</li><li>3 Choose printer</li><li>4 Export</li></ol>
+
+  <!-- 1 source -->
+  <section class="card" id="c-src">
+    <h2><span class="num">1</span>Load file</h2>
+    <label class="drop" id="drop" tabindex="0">
+      <input type="file" id="file" class="hidden" accept=".mid,.midi,audio/*,.wav,.mp3,.m4a,.ogg,.flac,.aac">
+      <strong>Drop a MIDI or audio file here</strong>
+      <span>or click to browse · .mid · .wav · .mp3 · .m4a · .ogg · .flac</span>
+    </label>
+    <div class="chip hidden" id="chip">
+      <span class="badge" id="chipType">MIDI</span>
+      <span class="name" id="chipName"></span>
+      <span class="muted" id="chipMeta"></span>
+      <span class="grow"></span>
+      <button id="chipChange">Choose another file</button>
+    </div>
+
+    <div id="audioPanel" class="hidden">
+      <div class="row" style="margin-top:14px">
+        <span style="font-size:14px;font-weight:600">What's in the recording?</span>
+        <div class="chips" id="preset">
+          <button data-p="voice" class="on">Vocals</button><button data-p="whistle">Whistling</button><button data-p="guitar">Guitar</button><button data-p="bass">Bass</button><button data-p="keys">Piano / synth</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <button id="detect">Detect again</button>
+        <div class="progress"><div id="bar"></div></div>
+        <span id="astatus" class="muted" style="font-size:13px"></span>
+      </div>
+      <details>
+        <summary>Fine-tune detection</summary>
+        <div class="grid">
+          <label>Lowest pitch (Hz) <input type="number" id="fmin" value="80" step="any"></label>
+          <label>Highest pitch (Hz) <input type="number" id="fmax" value="1100" step="any"></label>
+          <label>Shortest note (ms) <input type="number" id="minms" value="90" step="10"></label>
+          <label>Volume threshold (dB) <input type="number" id="gate" value="-40" step="1"></label>
+          <label>Detection threshold <input type="number" id="thr" value="0.15" min="0.05" max="0.5" step="0.01"></label>
+          <label>Bar grid (BPM) <input type="number" id="bpm" value="120" step="1"></label>
+        </div>
+        <p class="hint">Too many wrong notes: lower the detection threshold (0.10) or raise the shortest note. Quiet notes missing: lower the volume threshold (−50). Octave jumps: narrow the pitch range. BPM only sets the bar grid.</p>
+      </details>
+      <p class="hint">Detection follows a single melodic line. Vocals, whistling or a single isolated instrument work well. With a full band mix it jumps between instruments, so isolate one track first, e.g. with a stem separator.</p>
+    </div>
+  </section>
+
+  <!-- 2 player -->
+  <section class="card" id="c-play">
+    <h2><span class="num">2</span>Listen &amp; adjust</h2>
+    <div class="empty" id="emptyPlay">Load a file above to see the note view here.</div>
+    <div id="playUI" class="hidden">
+      <div class="trackrow" id="trackRow">
+        <label>Track <select id="track"></select></label>
+      </div>
+      <canvas id="roll" aria-label="Note view. Click to set the playback position, drag to scrub."></canvas>
+      <div class="legend" id="legend">
+        <span><i style="background:var(--accent)"></i>Notes</span>
+        <span><i style="background:var(--out);border:1px solid var(--warn)"></i>Too high for the printer</span>
+        <span id="lgWave" class="hidden"><i style="background:var(--wave)"></i>Original audio</span>
+        <span><i style="background:var(--play)"></i>Playback position</span>
+      </div>
+
+      <div class="transport">
+        <button class="playbtn" id="play" aria-label="Play" title="Play (Space)"></button>
+        <button class="icon" id="toA" aria-label="Back to range start" title="Back to start (Home)"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+        <div class="time"><span id="posT">0:00.0</span> <span class="muted">/ <span id="durT">0:00.0</span></span><small id="posBar">Bar 1</small></div>
+        <span class="sp"></span>
+        <div class="seg" id="srcMode" title="What should the preview play?">
+          <button data-v="printer" class="on">Printer sound</button><button data-v="orig" id="origBtn">Original</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="ctl">
+          <div class="head"><span>Tempo</span><output id="tempoO">100 %</output></div>
+          <input type="range" id="tempo" min="25" max="200" step="1" value="100" aria-label="Tempo in percent">
+          <div class="sub">Faster or slower, pitch stays the same.</div>
+        </div>
+        <div class="ctl">
+          <div class="head"><span>Varispeed</span><output id="variO">100 %</output></div>
+          <input type="range" id="vari" min="50" max="200" step="1" value="100" aria-label="Varispeed in percent">
+          <div class="sub" id="variSub">Tempo and pitch together, like a faster tape.</div>
+        </div>
+        <div class="ctl">
+          <div class="head"><span>Transpose</span><output id="trO">0</output></div>
+          <div class="stepper">
+            <button data-tr="-12" title="One octave down">−12</button><button data-tr="-1">−1</button>
+            <input type="number" id="transpose" value="0" step="1" min="-48" max="48" aria-label="Semitones">
+            <button data-tr="1">+1</button><button data-tr="12" title="One octave up">+12</button>
+          </div>
+          <div class="sub">Semitones. ±12 = one octave.</div>
+        </div>
+        <div class="ctl">
+          <div class="head"><span>Voices</span><output id="voicesO">1</output></div>
+          <div class="seg full" id="voices" style="margin-top:8px"><button data-v="1" class="on">One voice</button><button data-v="2">Two voices</button></div>
+          <div class="sub" id="voicesSub">Plays the highest note.</div>
+          <select id="voice2" class="hidden" style="margin-top:6px" aria-label="Second voice">
+            <option value="bass">2nd voice: bass</option>
+            <option value="second">2nd voice: second-highest</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="crop">
+        <b>Range</b> Bar <input type="number" id="barA" min="1" step="1" value="1" aria-label="Start bar"> to
+        <input type="number" id="barB" min="1" step="1" value="1" aria-label="End bar (exclusive)">
+        <button id="setA">Start = position</button><button id="setB">End = position</button><button id="reset">Whole song</button>
+      </div>
+      <div class="row" style="margin-top:10px;gap:18px">
+        <label class="check"><input type="checkbox" id="snap" checked> Snap markers to bars</label>
+        <label class="check"><input type="checkbox" id="stopB" checked> Stop at end marker</label>
+      </div>
+      <p class="hint">Click the view to set the position. Drag to scrub: during playback it jumps along, when stopped you hear the note under the pointer. The dark flags at the top mark the start and end of the range and can be dragged. Keys: Space = play/pause, ← → = one bar, Home = back to start. The end bar is exclusive: start 5, end 9 = bars 5 to 8.</p>
+      <div class="status" id="status"></div>
+    </div>
+  </section>
+
+  <!-- 3 printer -->
+  <section class="card" id="c-printer">
+    <h2><span class="num">3</span>Choose printer</h2>
+    <div class="grid">
+      <label>Brand <select id="brand"></select></label>
+      <label style="grid-column:span 2">Model <select id="model"></select></label>
+    </div>
+    <div class="specs" id="specs"></div>
+    <span class="src" id="src"></span>
+    <p class="pnote" id="pnote"></p>
+    <label class="check hidden" id="stealthRow" style="margin-top:10px"><input type="checkbox" id="stealth"> Quiet / stealth mode is on at the printer</label>
+
+    <details id="adv">
+      <summary>Advanced settings</summary>
+      <div class="grid">
+        <label>Full steps/mm X <input type="number" id="fsX" step="any"></label>
+        <label>Full steps/mm Y <input type="number" id="fsY" step="any"></label>
+        <label>Kinematics <select id="kin"><option value="corexy">CoreXY</option><option value="bed">Bed slinger</option><option value="corexz">CoreXZ</option></select></label>
+        <label>Firmware <select id="fw"><option value="buddy">Prusa Buddy</option><option value="mk3">Prusa MK3</option><option value="marlin">Marlin</option><option value="klipper">Klipper</option><option value="bambu">Bambu Lab</option><option value="generic">Other</option></select></label>
+        <label>Center X (mm) <input type="number" id="cxI" step="any"></label>
+        <label>Center Y (mm) <input type="number" id="cyI" step="any"></label>
+        <label>Travel X ± mm <input type="number" id="hxI" step="any"></label>
+        <label>Travel Y ± mm <input type="number" id="hyI" step="any"></label>
+        <label>Max speed (mm/s) <input type="number" id="vI" step="any"></label>
+        <label>Acceleration (mm/s²) <input type="number" id="accI" step="any"></label>
+        <label>Z height while playing (mm) <input type="number" id="zI" step="any"></label>
+        <label>Tuning offset (semitones) <input type="number" id="tune" value="0" step="0.1"></label>
+      </div>
+      <div class="calc">
+        <label>Step angle <select id="cAng"><option value="1.8">1.8° (200 steps)</option><option value="0.9">0.9° (400 steps)</option></select></label>
+        <label>Pulley teeth <input type="number" id="cTeeth" value="20" step="1"></label>
+        <label>Belt pitch (mm) <select id="cPitch"><option value="2">2 mm (GT2)</option><option value="1.5">1.5 mm (1.5GT)</option><option value="3">3 mm (GT3)</option></select></label>
+        <button id="cApply">Apply to X and Y</button>
+      </div>
+      <p class="hint">Full steps/mm = steps per revolution ÷ (teeth × pitch). From Marlin: M92 value ÷ microsteps. From Klipper: 200 ÷ rotation_distance (400 ÷ rotation_distance for 0.9° motors).<br>
+      Tuning offset: how many semitones was the test tone off? Too low = negative. One octave too low = −12.</p>
+      <button class="link" id="advReset" style="margin-top:8px">Restore model defaults</button>
+    </details>
+  </section>
+
+  <!-- 4 export -->
+  <section class="card" id="c-export">
+    <h2><span class="num">4</span>Export</h2>
+    <div class="row" style="margin-bottom:14px">
+      <span style="font-size:14px;font-weight:600">Output</span>
+      <div class="seg" id="outMode"><button data-v="file" class="on">Standalone file</button><button data-v="snippet">Snippet for slicer start G-code</button></div>
+    </div>
+    <div class="row">
+      <button id="copy" class="primary big hidden">Copy snippet</button>
+      <button id="dl" class="primary big" disabled>Download G-code</button>
+      <button id="calib">Test tone G-code</button>
+      <button id="savemid" disabled>Save range as MIDI</button>
+    </div>
+    <div class="out" id="out"></div>
+    <ol class="howto" id="howto"></ol>
+    <details>
+      <summary>Printer sounds off?</summary>
+      <p class="hint" style="margin-top:0">1. Print the test tone G-code: 2 s A4 (440 Hz), a pause, 2 s A5 (880 Hz). Measure it with a tuner app on your phone.<br>
+      2. Enter the deviation as tuning offset under "Advanced settings".<br>
+      3. High notes sound off or are missing: turn off quiet mode on the printer or transpose down.<br>
+      4. Notes "whine" at the start: short notes don't quite reach their speed. Lowering the tempo a little helps.</p>
+    </details>
+  </section>
+
+  <footer>Runs entirely in your browser. No files are uploaded.<br>
+  Only use files you have the rights to. Not an official project of any printer manufacturer, all trademarks belong to their owners.<br>
+  Before starting: clear the bed and the travel path. Use at your own risk.</footer>
+</main>
+
+<script id="core">
+// ===================== StepperSong core (no DOM) =====================
+
+// ---------- printer database ----------
+// fs = full steps per mm (X, Y); src: fw = firmware source, cfg = official config,
+// com = community copy of stock config, est = estimated (calibrate with test tone)
+const PRINTERS=[
+  // Prusa (Prusa-Firmware-Buddy / Prusa-Firmware sources)
+  {b:'Prusa',m:'CORE One+ (Gen 2, 1.5GT belts)',kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw'},
+  {b:'Prusa',m:'CORE One+ with INDX',kin:'corexy',fw:'buddy',fs:[12.698,12.698],sz:[250,205,270],c:[125,103],v:350,vs:140,acc:10000,src:'fw',
+    note:'Keep away from the right edge (tool changer wiper). The default travel stays centered.'},
+  {b:'Prusa',m:'CORE One (2GT belts)',kin:'corexy',fw:'buddy',fs:[12.5,12.5],sz:[250,220,270],c:[125,110],v:350,vs:160,acc:10000,src:'fw',
+    note:'Early CORE One with 2GT belts. After upgrading to 1.5GT belts, pick the Gen 2 entry. If unsure, check M92 on the printer.'},
+  {b:'Prusa',m:'CORE One L+ (1.5GT)',kin:'corexy',fw:'buddy',fs:[6.349,6.349],sz:[300,300,330],c:[150,150],v:500,vs:160,acc:10000,src:'fw'},
+  {b:'Prusa',m:'CORE One L (2GT)',kin:'corexy',fw:'buddy',fs:[6.25,6.25],sz:[300,300,330],c:[150,150],v:500,vs:160,acc:10000,src:'fw'},
+  {b:'Prusa',m:'MK4S / MK4',kin:'bed',fw:'buddy',fs:[12.5,12.5],sz:[250,210,220],c:[125,105],v:300,vs:160,acc:4000,src:'fw'},
+  {b:'Prusa',m:'MK3S+',kin:'bed',fw:'mk3',fs:[6.25,6.25],sz:[250,210,210],c:[125,105],v:200,vs:100,acc:2500,src:'fw',
+    note:'The firmware limits X/Y to 200 mm/s, 100 mm/s in Silent mode. Use Normal mode for high notes.'},
+  {b:'Prusa',m:'MINI / MINI+',kin:'bed',fw:'buddy',fs:[6.25,6.25],sz:[180,180,180],c:[90,90],v:400,vs:180,acc:4000,src:'fw'},
+  {b:'Prusa',m:'XL (2GT)',kin:'corexy',fw:'buddy',fs:[5,5],sz:[360,360,360],c:[180,180],v:460,vs:140,acc:7000,src:'fw'},
+  {b:'Prusa',m:'XL (1.5GT)',kin:'corexy',fw:'buddy',fs:[4.938,4.938],sz:[360,360,360],c:[180,180],v:460,vs:140,acc:7000,src:'fw'},
+  // Bambu Lab (motor data unpublished: 1.8° + 20T GT2 assumed)
+  {b:'Bambu Lab',m:'X1 Carbon / X1E',kin:'corexy',fw:'bambu',fs:[5,5],sz:[256,256,250],c:[128,128],v:500,acc:10000,src:'est'},
+  {b:'Bambu Lab',m:'P1S / P1P',kin:'corexy',fw:'bambu',fs:[5,5],sz:[256,256,250],c:[128,128],v:500,acc:10000,src:'est'},
+  {b:'Bambu Lab',m:'P2S',kin:'corexy',fw:'bambu',fs:[5,5],sz:[256,256,256],c:[128,128],v:1000,acc:10000,src:'est'},
+  {b:'Bambu Lab',m:'A1',kin:'bed',fw:'bambu',fs:[5,5],sz:[256,256,256],c:[128,128],v:500,vs:200,acc:6000,src:'est'},
+  {b:'Bambu Lab',m:'A1 mini',kin:'bed',fw:'bambu',fs:[5,5],sz:[180,180,180],c:[90,90],v:500,vs:200,acc:6000,src:'est'},
+  {b:'Bambu Lab',m:'H2D',kin:'corexy',fw:'bambu',fs:[5,5],sz:[350,320,325],c:[175,160],v:1000,acc:10000,src:'est'},
+  {b:'Bambu Lab',m:'H2S',kin:'corexy',fw:'bambu',fs:[5,5],sz:[340,320,340],c:[170,160],v:1000,acc:10000,src:'est'},
+  // Creality
+  {b:'Creality',m:'Ender-3 V2',kin:'bed',fw:'marlin',fs:[5,5],sz:[220,220,250],c:[110,110],v:300,acc:2000,src:'fw'},
+  {b:'Creality',m:'Ender-3 S1 / S1 Pro',kin:'bed',fw:'marlin',fs:[5,5],sz:[220,220,270],c:[110,110],v:300,acc:2000,src:'fw'},
+  {b:'Creality',m:'Ender-3 V3 SE',kin:'bed',fw:'marlin',fs:[5,5],sz:[220,220,250],c:[110,110],v:500,acc:2500,src:'fw'},
+  {b:'Creality',m:'Ender-3 V3 KE',kin:'bed',fw:'klipper',fs:[5,3.333],sz:[220,220,240],c:[110,110],v:500,acc:5000,src:'cfg'},
+  {b:'Creality',m:'Ender-3 V3 (CoreXZ)',kin:'corexz',fw:'klipper',fs:[5,5],sz:[220,220,250],c:[110,110],v:600,acc:8000,src:'est'},
+  {b:'Creality',m:'K1 / K1C (20-tooth pulley)',kin:'corexy',fw:'klipper',fs:[5,5],sz:[220,220,250],c:[112,112],v:600,acc:10000,src:'cfg',
+    note:'Creality ships K1 units with two different pulleys. Check printer.cfg: rotation_distance 40 = this entry, 72 = the other one.'},
+  {b:'Creality',m:'K1 / K1C (rotation_distance 72)',kin:'corexy',fw:'klipper',fs:[2.778,2.778],sz:[220,220,250],c:[112,112],v:800,acc:10000,src:'cfg',
+    note:'Applies if printer.cfg says rotation_distance: 72. Otherwise pick the 20-tooth entry.'},
+  {b:'Creality',m:'K1 Max (20-tooth pulley)',kin:'corexy',fw:'klipper',fs:[5,5],sz:[300,300,300],c:[150,150],v:800,acc:10000,src:'cfg',
+    note:'Check printer.cfg: rotation_distance 40 = this entry, 72 = the other one.'},
+  {b:'Creality',m:'K1 Max (rotation_distance 72)',kin:'corexy',fw:'klipper',fs:[2.778,2.778],sz:[300,300,300],c:[150,150],v:800,acc:10000,src:'cfg'},
+  {b:'Creality',m:'K2 Plus',kin:'corexy',fw:'klipper',fs:[5,5],sz:[350,350,350],c:[175,175],v:800,acc:10000,src:'cfg'},
+  // Elegoo
+  {b:'Elegoo',m:'Neptune 4 / 4 Pro',kin:'bed',fw:'klipper',fs:[5,5],sz:[225,225,265],c:[117,117],v:250,acc:3000,src:'com'},
+  {b:'Elegoo',m:'Neptune 4 Max',kin:'bed',fw:'klipper',fs:[5,5],sz:[420,420,480],c:[215,215],v:500,acc:4000,src:'com'},
+  {b:'Elegoo',m:'Centauri Carbon',kin:'corexy',fw:'generic',fs:[5,5],sz:[256,256,256],c:[128,128],v:500,acc:10000,src:'com'},
+  // Anycubic
+  {b:'Anycubic',m:'Kobra 3',kin:'bed',fw:'klipper',fs:[6.25,6.25],sz:[250,250,260],c:[125,125],v:600,acc:5000,src:'com'},
+  {b:'Anycubic',m:'Kobra S1',kin:'corexy',fw:'klipper',fs:[5,5],sz:[250,250,250],c:[125,125],v:600,acc:10000,src:'est'},
+  // Sovol
+  {b:'Sovol',m:'SV06',kin:'bed',fw:'marlin',fs:[5,5],sz:[220,220,250],c:[110,110],v:300,acc:3000,src:'cfg'},
+  {b:'Sovol',m:'SV06 Plus',kin:'bed',fw:'marlin',fs:[5,5],sz:[300,300,340],c:[150,150],v:500,acc:2000,src:'cfg'},
+  {b:'Sovol',m:'SV08',kin:'corexy',fw:'klipper',fs:[5,5],sz:[350,350,345],c:[175,175],v:700,acc:10000,src:'cfg'},
+  // Qidi
+  {b:'Qidi',m:'Q1 Pro',kin:'corexy',fw:'klipper',fs:[5.015,5.015],sz:[245,245,240],c:[122,122],v:600,acc:10000,src:'cfg'},
+  {b:'Qidi',m:'Plus4',kin:'corexy',fw:'klipper',fs:[5.152,5.152],sz:[305,305,280],c:[152,152],v:600,acc:10000,src:'cfg'},
+  {b:'Qidi',m:'X-Plus 3',kin:'corexy',fw:'klipper',fs:[5,5],sz:[280,280,270],c:[140,140],v:600,acc:10000,src:'est'},
+  // Flashforge
+  {b:'Flashforge',m:'Adventurer 5M / 5M Pro',kin:'corexy',fw:'generic',fs:[5,5],sz:[220,220,220],c:[0,0],v:600,acc:10000,src:'com',
+    note:'The origin (0,0) is at the bed center.'},
+  // Voron
+  {b:'Voron',m:'2.4 / Trident 250',kin:'corexy',fw:'klipper',fs:[5,5],sz:[250,250,230],c:[125,125],v:300,acc:3000,src:'cfg'},
+  {b:'Voron',m:'2.4 / Trident 300',kin:'corexy',fw:'klipper',fs:[5,5],sz:[300,300,250],c:[150,150],v:300,acc:3000,src:'cfg'},
+  {b:'Voron',m:'2.4 / Trident 350',kin:'corexy',fw:'klipper',fs:[5,5],sz:[350,350,330],c:[175,175],v:300,acc:3000,src:'cfg'},
+  // Artillery
+  {b:'Artillery',m:'Sidewinder X3 Plus / Pro',kin:'bed',fw:'marlin',fs:[5,5],sz:[300,300,400],c:[150,150],v:300,acc:3000,src:'cfg'},
+  {b:'Artillery',m:'Sidewinder X4 Pro',kin:'bed',fw:'klipper',fs:[5,5],sz:[240,240,250],c:[120,120],v:500,acc:5000,src:'est'},
+  // manual
+  {b:'Custom printer',m:'Manual settings',kin:'bed',fw:'marlin',fs:[5,5],sz:[220,220,250],c:[110,110],v:300,acc:3000,src:'man'},
+];
+
+const KIN_LABEL={corexy:'CoreXY',bed:'Bed slinger (Y moves the bed)',corexz:'CoreXZ (Y moves the bed)'};
+const FW_LABEL={buddy:'Prusa Buddy (Marlin-based)',mk3:'Prusa-Firmware MK3',marlin:'Marlin',klipper:'Klipper',bambu:'Bambu Lab',generic:'Vendor firmware'};
+const SRC_LABEL={fw:'Values from the firmware source code',cfg:'Values from the official configuration',com:'Values from a community copy of the stock config',est:'Estimated: the manufacturer publishes no motor data. Check with the test tone.',man:'Custom values'};
+
+// effective machine profile from a DB entry plus user overrides
+function profile(p, o={}){
+  const k=Math.pow(2,(o.tune||0)/12);
+  const fs=o.fs||p.fs, sz=p.sz, c=o.c||p.c;
+  const v=o.v||(o.stealth&&p.vs?p.vs:p.v);
+  return {
+    name:p.b+' '+p.m, kin:o.kin||p.kin, fw:o.fw||p.fw,
+    fsX:fs[0]*k, fsY:fs[1]*k, cx:c[0], cy:c[1],
+    hx:o.hx||Math.max(10,sz[0]/2-20), hy:o.hy||Math.max(10,sz[1]/2-20),
+    vmax:v, acc:o.acc||p.acc, z:o.z||Math.min(20,Math.max(5,sz[2]-20))
+  };
+}
+
+const hz=n=>440*Math.pow(2,(n-69)/12);
+const midiOf=f=>69+12*Math.log2(f/440);
+
+// ---------- MIDI parser ----------
+function parseMidi(buf){
+  const d=new DataView(buf); let p=0;
+  const str=n=>{let s='';for(let i=0;i<n;i++)s+=String.fromCharCode(d.getUint8(p+i));p+=n;return s};
+  const u32=()=>{const v=d.getUint32(p);p+=4;return v}, u16=()=>{const v=d.getUint16(p);p+=2;return v};
+  if(str(4)!=='MThd') throw new Error('Not a valid MIDI file.');
+  const hl=u32(); u16(); const ntr=u16(); const div=u16(); p+=hl-6;
+  if(div&0x8000) throw new Error('SMPTE timing is not supported.');
+  const tracks=[], tempos=[]; let timesig=null;
+  for(let t=0;t<ntr && p<d.byteLength;t++){
+    const id=str(4), len=u32(), end=p+len;
+    if(id!=='MTrk'){p=end;t--;continue}
+    let tick=0, run=0, name='', notes=[], open={};
+    const vlq=()=>{let v=0,b;do{b=d.getUint8(p++);v=(v<<7)|(b&0x7f)}while(b&0x80);return v};
+    while(p<end){
+      tick+=vlq();
+      let st=d.getUint8(p);
+      if(st<0x80){st=run}else{p++; if(st<0xF0) run=st}
+      if(st===0xFF){
+        const type=d.getUint8(p++), l=vlq();
+        if(type===0x51) tempos.push({tick, us:(d.getUint8(p)<<16)|(d.getUint8(p+1)<<8)|d.getUint8(p+2)});
+        if(type===0x58 && !timesig) timesig={num:d.getUint8(p), den:1<<d.getUint8(p+1)};
+        if(type===0x03 && !name){for(let i=0;i<l;i++)name+=String.fromCharCode(d.getUint8(p+i))}
+        p+=l;
+      } else if(st===0xF0||st===0xF7){ p+=vlq() }
+      else{
+        const hi=st&0xF0, ch=st&0x0F;
+        const a=d.getUint8(p++), b=(hi===0xC0||hi===0xD0)?0:d.getUint8(p++);
+        const key=ch*128+a;
+        if(hi===0x90&&b>0){
+          if(open[key]!=null && ch!==9) notes.push({s:open[key].t,e:tick,n:a,v:open[key].v});
+          open[key]={t:tick,v:b};
+        } else if(hi===0x80||(hi===0x90&&b===0)){
+          if(open[key]!=null){ if(ch!==9) notes.push({s:open[key].t,e:tick,n:a,v:open[key].v}); delete open[key] }
+        }
+      }
+    }
+    p=end;
+    tracks.push({name:name.trim(), notes});
+  }
+  tempos.sort((a,b)=>a.tick-b.tick);
+  return {div, tracks, tempos, timesig: timesig||{num:4,den:4}};
+}
+
+function tempoMap(midi){
+  const map=[{tick:0,sec:0,us:500000}];
+  for(const t of midi.tempos){
+    const last=map[map.length-1];
+    const sec=last.sec+(t.tick-last.tick)*last.us/1e6/midi.div;
+    if(t.tick===last.tick) last.us=t.us; else map.push({tick:t.tick,sec,us:t.us});
+  }
+  return {
+    toSec(tick){let i=map.length-1; while(i>0&&map[i].tick>tick) i--;
+      const m=map[i]; return m.sec+(tick-m.tick)*m.us/1e6/midi.div},
+    toTick(sec){let i=map.length-1; while(i>0&&map[i].sec>sec) i--;
+      const m=map[i]; return m.tick+(sec-m.sec)*1e6*midi.div/m.us},
+    usAt(tick){let i=map.length-1; while(i>0&&map[i].tick>tick) i--; return map[i].us}
+  };
+}
+
+function cropNotes(notes, A, B){
+  return notes.filter(x=>x.e>A && x.s<B)
+    .map(x=>({...x, s:Math.max(x.s,A)-A, e:Math.min(x.e,B)-A}))
+    .filter(x=>x.e>x.s);
+}
+function cropTempos(tempos, tm, A, B){
+  const out=[{tick:0,us:tm.usAt(A)}];
+  for(const t of tempos) if(t.tick>A && t.tick<B) out.push({tick:t.tick-A,us:t.us});
+  return out;
+}
+
+// ---------- voice reduction: a = highest note, b = bass (lowest) or second highest ----------
+function voiceSegs(notes, mode='bass'){
+  if(!notes.length) return [];
+  const ev=[]; for(const x of notes){ ev.push([x.s,1,x.n]); ev.push([x.e,-1,x.n]) }
+  ev.sort((p,q)=>p[0]-q[0]);
+  const act=new Map(), out=[]; let i=0;
+  while(i<ev.length){
+    const t=ev[i][0];
+    while(i<ev.length&&ev[i][0]===t){
+      const n=ev[i][2], c=(act.get(n)||0)+ev[i][1];
+      if(c>0) act.set(n,c); else act.delete(n); i++;
+    }
+    if(i>=ev.length) break;
+    const dur=ev[i][0]-t; if(dur<=0) continue;
+    const ps=[...act.keys()].sort((x,y)=>y-x);
+    const a=ps.length?ps[0]:null;
+    const b=ps.length>1?(mode==='bass'?ps[ps.length-1]:ps[1]):null;
+    const L=out[out.length-1];
+    if(L&&L.a===a&&L.b===b) L.d+=dur; else out.push({d:dur,a,b});
+  }
+  // fold slivers (< 4 ms) into the previous segment
+  const res=[];
+  for(const s of out){ if(res.length&&s.d<0.004) res[res.length-1].d+=s.d; else res.push({...s}) }
+  return res;
+}
+
+// ---------- axis speeds for one segment ----------
+// returns {vx,vy,a,b} with dropped voices set to null; speeds in mm/s (signs irrelevant)
+function segMotion(seg, P, voices){
+  const calc=(a,b)=>{
+    const fa=a===null?0:hz(a), fb=b===null?0:hz(b);
+    if(P.kin==='corexy'){
+      if(voices===1) return {vx:fa/P.fsX, vy:0};
+      const sa=fa/P.fsX, sb=fb/P.fsX;           // belt speed of motor A and B
+      return {vx:(sa+sb)/2, vy:(sa-sb)/2};       // A = x+y, B = x-y
+    }
+    return {vx:fa/P.fsX, vy:fb/P.fsY};           // independent X and Y motors
+  };
+  const ok=m=>Math.abs(m.vx)<=P.vmax+1e-9&&Math.abs(m.vy)<=P.vmax+1e-9&&Math.hypot(m.vx,m.vy)<=P.vmax*1.0001;
+  let a=seg.a, b=voices>1?seg.b:null, dropA=false, dropB=false;
+  // drop each voice that is unreachable on its own, then the bass if only the combination fails
+  if(a!==null&&!ok(calc(a,null))){ a=null; dropA=true }
+  if(b!==null&&!ok(calc(null,b))){ b=null; dropB=true }
+  let m=calc(a,b);
+  if(!ok(m)&&b!==null){ b=null; dropB=true; m=calc(a,b) }
+  return {vx:Math.abs(m.vx), vy:Math.abs(m.vy), a, b, dropA, dropB};
+}
+
+// ---------- G-code ----------
+const MARK_BEGIN='; ==================== STEPPERSONG BEGIN ====================';
+const MARK_END  ='; ==================== STEPPERSONG END ======================';
+
+// mode 'file': standalone print file. mode 'snippet': block for the slicer's start G-code,
+// leaves machine limits untouched and keeps the motors enabled for the print that follows.
+function gcodeHeader(P, title, mode='file'){
+  const v=Math.round(P.vmax), a=Math.round(P.acc);
+  const t=String(title).replace(/[\[\]{}]/g,'');   // slicers treat brackets as placeholders
+  const L=[MARK_BEGIN, `; ${t}`, `; StepperSong - ${P.name} - ${FW_LABEL[P.fw]||P.fw}`];
+  if(mode==='snippet') L.push('; Start G-code snippet: plays before every print.',
+    '; To remove it, delete everything from STEPPERSONG BEGIN to STEPPERSONG END.',
+    '; Machine limits are not changed, so print settings stay untouched.');
+  else L.push('; Axis moves only: no heating, no extrusion');
+  L.push('G90','G21','G28');
+  if(mode!=='snippet'){
+    if(P.fw==='klipper') L.push(`SET_VELOCITY_LIMIT VELOCITY=${v} ACCEL=${a}`);
+    else if(P.fw==='bambu'||P.fw==='generic') L.push(`M204 S${a}`);
+    else L.push(`M201 X${a} Y${a}`, `M203 X${v} Y${v}`, `M204 S${a}`);
+  }
+  L.push(`G1 Z${+P.z.toFixed(1)} F600`, `G1 X${P.cx} Y${P.cy} F${Math.round(Math.min(v,150)*60)}`, 'M400');
+  return L;
+}
+
+function buildGcode(segs, P, voices, title, mode='file'){
+  const g=gcodeHeader(P,title,mode), f3=x=>x.toFixed(3);
+  let px=0, py=0, dx=1, dy=1, rest=0, played=0, skipA=0, skipB=0;
+  const flushRest=()=>{ const ms=Math.round(rest*1000); if(ms>0) g.push(`G4 P${ms}`); rest=0 };
+  for(const seg of segs){
+    const m=segMotion(seg,P,voices);
+    if(m.dropA) skipA++; if(m.dropB) skipB++;
+    if(m.vx<1e-6&&m.vy<1e-6){ rest+=seg.d; continue }
+    flushRest(); played++;
+    const F=(Math.hypot(m.vx,m.vy)*60).toFixed(1);
+    let rem=seg.d, guard=0;
+    while(rem>1e-7&&guard++<100000){
+      const rx=dx>0?P.hx-px:px+P.hx, ry=dy>0?P.hy-py:py+P.hy;
+      if(m.vx>1e-6&&rx<0.5){dx=-dx;continue}
+      if(m.vy>1e-6&&ry<0.5){dy=-dy;continue}
+      const tx=m.vx>1e-6?rx/m.vx:Infinity, ty=m.vy>1e-6?ry/m.vy:Infinity;
+      const dt=Math.min(rem,tx,ty);
+      px+=m.vx*dt*dx; py+=m.vy*dt*dy; rem-=dt;
+      g.push(m.vy>1e-6?`G1 X${f3(P.cx+px)} Y${f3(P.cy+py)} F${F}`:`G1 X${f3(P.cx+px)} F${F}`);
+    }
+  }
+  flushRest();
+  if(mode==='snippet') g.push('M400', `G1 X${P.cx} Y${P.cy} F${Math.round(Math.min(P.vmax,150)*60)}`, 'M400', MARK_END);
+  else g.push('M400', P.fw==='bambu'?'M18':'M84', MARK_END);
+  return {text:g.join('\n')+'\n', played, skipA, skipB};
+}
+
+// count notes the printer cannot reach for a given extra transposition
+function countSkipped(segs, P, voices, extra){
+  let n=0;
+  for(const s of segs){
+    const m=segMotion({d:s.d,a:s.a===null?null:s.a+extra,b:s.b===null?null:s.b+extra},P,voices);
+    if(m.dropA) n++; if(m.dropB) n++;
+  }
+  return n;
+}
+
+// highest MIDI pitch one voice can reach on this machine
+function maxPitch(P){ return midiOf(P.vmax*P.fsX) }
+
+// ---------- MIDI writer (format 0) ----------
+function writeMidi(div, tempos, timesig, notes){
+  const ev=[];
+  ev.push({t:0,o:0,b:[0xFF,0x58,4,timesig.num,Math.log2(timesig.den),24,8]});
+  for(const t of tempos) ev.push({t:t.tick,o:0,b:[0xFF,0x51,3,(t.us>>16)&255,(t.us>>8)&255,t.us&255]});
+  for(const n of notes){
+    ev.push({t:n.s,o:2,b:[0x90,n.n,n.v||90]});
+    ev.push({t:n.e,o:1,b:[0x80,n.n,0]});
+  }
+  ev.sort((a,b)=>a.t-b.t||a.o-b.o);
+  const trk=[]; let last=0;
+  const vlq=v=>{const s=[v&0x7f]; while(v>>=7) s.unshift((v&0x7f)|0x80); trk.push(...s)};
+  for(const e of ev){ vlq(Math.round(e.t)-last); last=Math.round(e.t); trk.push(...e.b) }
+  trk.push(0,0xFF,0x2F,0);
+  const u32=v=>[(v>>>24)&255,(v>>16)&255,(v>>8)&255,v&255];
+  return new Uint8Array([
+    0x4D,0x54,0x68,0x64,0,0,0,6,0,0,0,1,(div>>8)&255,div&255,
+    0x4D,0x54,0x72,0x6B,...u32(trk.length),...trk]);
+}
+
+// ---------- audio -> notes (YIN pitch tracking, single voice) ----------
+async function yinTrack(x, fs, o, onProg){
+  const W=1024, half=W/2, hop=Math.max(1,Math.round(fs*0.01));
+  const tMin=Math.max(2,Math.floor(fs/o.fmax)), tMax=Math.min(half-1,Math.ceil(fs/o.fmin));
+  const dn=new Float32Array(tMax+2), gate=Math.pow(10,o.db/20), f0=[];
+  for(let i=0,f=0;i+W<=x.length;i+=hop,f++){
+    if(onProg && f%300===0){ onProg(i/x.length); await new Promise(r=>setTimeout(r)) }
+    let e=0; for(let k=0;k<W;k++) e+=x[i+k]*x[i+k];
+    if(Math.sqrt(e/W)<gate){ f0.push(0); continue }
+    let run=0;
+    for(let t=1;t<=tMax;t++){
+      let s=0; for(let k=0;k<half;k++){ const v=x[i+k]-x[i+k+t]; s+=v*v }
+      run+=s; dn[t]=run>0?s*t/run:1;
+    }
+    let best=-1;
+    for(let t=tMin;t<=tMax;t++) if(dn[t]<o.thr){ while(t<tMax&&dn[t+1]<dn[t]) t++; best=t; break }
+    if(best<0){ f0.push(0); continue }
+    const a=dn[best-1], b=dn[best], c=best<tMax?dn[best+1]:b, den=a+c-2*b;
+    f0.push(fs/(best+(den?(a-c)/(2*den):0)));
+  }
+  return {f0, hop:hop/fs};
+}
+
+function framesToNotes(f0, hop, o){
+  const lo=midiOf(o.fmin), hi=midiOf(o.fmax);
+  let m=f0.map(f=>{ if(!f) return null; const n=Math.round(midiOf(f)); return (n<lo-0.5||n>hi+0.5)?null:n });
+  m=m.map((_,i)=>{
+    const w=m.slice(Math.max(0,i-2),i+3).filter(v=>v!==null);
+    if(w.length<3) return null; w.sort((a,b)=>a-b); return w[w.length>>1];
+  });
+  const runs=[]; for(const v of m){ if(runs.length&&runs[runs.length-1].n===v) runs[runs.length-1].len++; else runs.push({n:v,len:1}) }
+  const minF=Math.max(1,Math.ceil(o.minMs/1000/hop));
+  for(const r of runs) if(r.n!==null&&r.len<minF) r.n=null;
+  for(let i=1;i<runs.length-1;i++)
+    if(runs[i].n===null&&runs[i].len<=3&&runs[i-1].n!==null&&runs[i-1].n===runs[i+1].n) runs[i].n=runs[i-1].n;
+  const notes=[]; let t=0, cur=null;
+  for(const r of runs){
+    if(cur&&cur.n===r.n&&r.n!==null){ cur.e+=r.len*hop }
+    else if(r.n!==null){ cur={s:t*hop,e:(t+r.len)*hop,n:r.n,v:90}; notes.push(cur) }
+    else cur=null;
+    t+=r.len;
+  }
+  return notes;
+}
+
+function notesToMidi(notes, bpm, name){
+  const div=480, k=bpm/60*div;
+  return {div, tempos:[{tick:0,us:Math.round(60e6/bpm)}], timesig:{num:4,den:4},
+    tracks:[{name, notes:notes.map(x=>({s:Math.round(x.s*k),e:Math.round(x.e*k),n:x.n,v:x.v||90}))}]};
+}
+
+if(typeof module!=='undefined') module.exports={PRINTERS,profile,hz,midiOf,parseMidi,tempoMap,cropNotes,cropTempos,
+  voiceSegs,segMotion,buildGcode,countSkipped,maxPitch,writeMidi,yinTrack,framesToNotes,notesToMidi};
+
+</script>
+<script>
+// ===================== StepperSong UI =====================
+const $=id=>document.getElementById(id);
+const ICON_PLAY='<svg viewBox="0 0 24 24"><path d="M7 4v16l13-8z"/></svg>';
+const ICON_PAUSE='<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>';
+const AFS=11025;
+const NOTE=['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
+const noteName=n=>{const r=Math.round(n); return NOTE[((r%12)+12)%12]+(Math.floor(r/12)-1)};
+const fmtT=s=>{s=Math.max(0,s); return `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}.${Math.floor(s%1*10)}`};
+const num=(id,d)=>{const v=parseFloat($(id).value); return isFinite(v)?v:d};
+const store={get(){try{return JSON.parse(localStorage.getItem('steppersong')||'{}')}catch(e){return {}}},
+  set(o){try{localStorage.setItem('steppersong',JSON.stringify({...store.get(),...o}))}catch(e){}}};
+
+// ---------- state ----------
+let midi=null, tm=null, fileName='song', srcType=null, notes=[], A=0, B=0, tpb=1920, endTick=0, cursor=0;
+let audioBuf=null, env=null, ac=null, player=null, raf=0, drag=null, scrub=null, lastRestart=0;
+let voices=1, v2mode='bass', srcMode='printer', preset='voice', outMode='file';
+
+// ---------- derived values ----------
+const tempoF=()=>num('tempo',100)/100;
+const vari=()=>num('vari',100)/100;
+const rate=()=>tempoF()*vari();
+const shift=()=>(parseInt($('transpose').value)||0)+12*Math.log2(vari());
+const total=()=>Math.max(tpb,Math.ceil(endTick/tpb)*tpb);
+const cur=()=>PRINTERS[+$('model').value];
+
+function P(){
+  const p=cur(), k=Math.pow(2,num('tune',0)/12);
+  let v=num('vI',p.v);
+  if($('stealth').checked&&p.vs) v=Math.min(v,p.vs);
+  return {name:p.b+' '+p.m, kin:$('kin').value, fw:$('fw').value,
+    fsX:num('fsX',p.fs[0])*k, fsY:num('fsY',p.fs[1])*k,
+    cx:num('cxI',p.c[0]), cy:num('cyI',p.c[1]), hx:Math.max(5,num('hxI',50)), hy:Math.max(5,num('hyI',50)),
+    vmax:Math.max(1,v), acc:Math.max(100,num('accI',p.acc)), z:num('zI',20)};
+}
+
+function secNotes(from,to){
+  const t0=tm.toSec(from), r=rate(), sh=shift();
+  return notes.filter(x=>x.e>from&&x.s<to).map(x=>({
+    s:(tm.toSec(Math.max(x.s,from))-t0)/r, e:(tm.toSec(Math.min(x.e,to))-t0)/r, n:x.n+sh}))
+    .filter(x=>x.e>x.s);
+}
+const segsFor=(from,to)=>voiceSegs(secNotes(from,to),v2mode);
+
+// ---------- printer selection ----------
+function initPrinters(){
+  const brands=[...new Set(PRINTERS.map(p=>p.b))];
+  $('brand').innerHTML=brands.map(b=>`<option>${b}</option>`).join('');
+  const saved=store.get();
+  const idx=Number.isInteger(saved.idx)&&PRINTERS[saved.idx]?saved.idx:0;
+  $('brand').value=PRINTERS[idx].b; fillModels(idx);
+  if(saved.stealth) $('stealth').checked=true;
+  if(saved.tune) $('tune').value=saved.tune;
+  if(saved.voices===2) setVoices(2);
+}
+function fillModels(sel){
+  const b=$('brand').value;
+  $('model').innerHTML=PRINTERS.map((p,i)=>p.b===b?`<option value="${i}">${p.m}</option>`:'').join('');
+  if(sel!==undefined&&PRINTERS[sel].b===b) $('model').value=sel;
+  loadPrinter();
+}
+function loadPrinter(){
+  const p=cur();
+  $('fsX').value=p.fs[0]; $('fsY').value=p.fs[1]; $('kin').value=p.kin; $('fw').value=p.fw;
+  $('cxI').value=p.c[0]; $('cyI').value=p.c[1];
+  $('hxI').value=Math.max(10,p.sz[0]/2-20); $('hyI').value=Math.max(10,p.sz[1]/2-20);
+  $('vI').value=p.v; $('accI').value=p.acc; $('zI').value=Math.min(20,Math.max(5,p.sz[2]-20));
+  $('stealthRow').classList.toggle('hidden',!p.vs);
+  if(p.src==='man') $('adv').open=true;
+  store.set({idx:+$('model').value});
+  printerChanged();
+}
+function printerChanged(){
+  const p=cur(), q=P();
+  const mp=maxPitch(q);
+  const kinTxt=KIN_LABEL[q.kin];
+  const fsTxt=Math.abs(q.fsX-q.fsY)<1e-6?q.fsX.toFixed(3):`${q.fsX.toFixed(3)} / ${q.fsY.toFixed(3)}`;
+  $('specs').innerHTML=[
+    ['Kinematics',kinTxt],['Firmware',FW_LABEL[q.fw]],['Full steps per mm',fsTxt],
+    ['Build volume',`${p.sz[0]} × ${p.sz[1]} × ${p.sz[2]} mm`],
+    ['Max speed',`${Math.round(q.vmax)} mm/s`+($('stealth').checked&&p.vs?' (quiet mode)':'')],
+    ['Highest playable note',`${noteName(mp)} · ${Math.round(hz(mp))} Hz`],
+  ].map(([k,v])=>`<div class="spec"><b>${k}</b><span>${v}</span></div>`).join('');
+  $('src').className='src '+p.src; $('src').textContent=SRC_LABEL[p.src];
+  const notesTxt=[p.note||''];
+  if(p.vs&&!p.note&&!$('stealth').checked) notesTxt.push(`In quiet/stealth mode the speed limit drops to ${p.vs} mm/s and high notes get dropped.`);
+  if(q.kin==='corexy') notesTxt.push('CoreXY: with two voices, each of the two XY motors plays its own voice.');
+  else notesTxt.push('Two voices: melody on X, second voice on Y. Y moves the bed, so the lower voice goes there.');
+  $('pnote').textContent=notesTxt.filter(Boolean).join(' ');
+  howto(q);
+  compute();
+}
+function howto(q){
+  if(outMode==='snippet'){
+    $('howto').innerHTML=[
+      'Click "Copy snippet" and paste it into your slicer: printer settings → Custom / Machine G-code → Start G-code. Put it at the very top or right after the homing line.',
+      'The song then plays before every print. To remove it, delete everything from STEPPERSONG BEGIN to STEPPERSONG END.',
+      'The snippet does not change speed or acceleration limits, so your print settings stay as they are. If the slicer lowers the max speed before the snippet runs, high notes play flat.',
+      q.fw==='klipper'?'Klipper: paste it before the PRINT_START (or START_PRINT) line so it runs before heating.':'Paste it before the heating commands so the nozzle stays cold while the song plays.',
+      'Long songs make every print start later. A 10–30 second range works best.',
+    ].map(t=>`<li>${t}</li>`).join('');
+    return;
+  }
+  const L={
+    buddy:['Copy the G-code to a USB stick and start it from the file menu on the printer.','Turn stealth mode off for high notes.'],
+    mk3:['Copy the G-code to the SD card and start it on the printer.','Set the mode to "Normal" instead of "Silent" in the menu.'],
+    marlin:['Copy the G-code to the SD card and start it on the printer, or send it over USB with OctoPrint/Pronterface.'],
+    klipper:['Upload the G-code in Mainsail, Fluidd or the vendor app and print it. Many models also accept a USB stick.','If max_velocity in printer.cfg is lower, high notes play flat. Adjust Max speed under Advanced settings.'],
+    bambu:['Copy the .gcode file to the microSD card and start it from Files on the printer screen.','Bambu publishes no motor data. Play the test tone first and set the tuning offset.'],
+    generic:['Start it from a USB stick or the web interface.','Closed firmware: try the short test tone first to see whether the file is accepted.'],
+  }[q.fw]||[];
+  $('howto').innerHTML=[...L,'Nothing is heated and no filament is moved. The printer homes first (G28), raises Z, then moves back and forth around the bed center.','Clear the bed. To abort, stop the print on the printer.']
+    .map(t=>`<li>${t}</li>`).join('');
+}
+
+// ---------- loading ----------
+function setSteps(){
+  const li=$('steps').children;
+  li[0].classList.toggle('done',!!midi); li[1].classList.toggle('done',!!midi);
+  li[2].classList.toggle('done',!!midi); li[3].classList.toggle('done',false);
+}
+function showChip(type,name,meta){
+  $('drop').classList.add('hidden'); $('chip').classList.remove('hidden');
+  $('chipType').textContent=type; $('chipName').textContent=name; $('chipMeta').textContent=meta;
+}
+function loadMidiObject(m,name){
+  stopAll();
+  midi=m; tm=tempoMap(midi); fileName=name;
+  tpb=midi.div*4*midi.timesig.num/midi.timesig.den;
+  const sel=$('track'); sel.innerHTML='';
+  const withNotes=midi.tracks.map((t,i)=>({t,i})).filter(x=>x.t.notes.length);
+  if(!withNotes.length){ midi=null; throw new Error('The file contains no notes.') }
+  if(withNotes.length>1) sel.insertAdjacentHTML('beforeend','<option value="-1">All tracks combined</option>');
+  let best=withNotes[0];
+  for(const x of withNotes){
+    sel.insertAdjacentHTML('beforeend',`<option value="${x.i}">${x.t.name||'Track '+x.i} · ${x.t.notes.length} notes</option>`);
+    if(x.t.notes.length>best.t.notes.length) best=x;
+  }
+  sel.value=best.i;
+  $('trackRow').classList.toggle('hidden',srcType==='audio'||withNotes.length<2);
+  $('emptyPlay').classList.add('hidden'); $('playUI').classList.remove('hidden');
+  $('origBtn').disabled=!audioBuf; if(!audioBuf) setSrcMode('printer');
+  $('lgWave').classList.toggle('hidden',!env);
+  loadTrack(); setSteps();
+}
+function loadTrack(){
+  stopAll();
+  const ti=parseInt($('track').value);
+  notes=ti<0?midi.tracks.flatMap(t=>t.notes):midi.tracks[ti].notes;
+  endTick=Math.max(1,...notes.map(x=>x.e));
+  if(env&&audioBuf) endTick=Math.max(endTick,tm.toTick(audioBuf.duration));
+  cursor=0; setCrop(0,total());
+}
+
+async function openFile(f){
+  if(!f) return;
+  stopAll(); samples=null; env=null; audioBuf=null;
+  const buf=await f.arrayBuffer();
+  const head=new Uint8Array(buf.slice(0,4));
+  const isMidi=/\.(mid|midi)$/i.test(f.name)||String.fromCharCode(...head)==='MThd';
+  try{
+    if(isMidi){
+      audioBuf=null; env=null; srcType='midi';
+      $('audioPanel').classList.add('hidden');
+      loadMidiObject(parseMidi(buf), f.name.replace(/\.(mid|midi)$/i,''));
+      const n=notes.length;
+      showChip('MIDI',f.name,`${midi.tracks.filter(t=>t.notes.length).length} track(s) · ${n} notes in the selected track`);
+    } else {
+      srcType='audio';
+      showChip('AUDIO',f.name,'reading …');
+      const ctx=new AudioContext(); audioBuf=await ctx.decodeAudioData(buf); ctx.close();
+      showChip('AUDIO',f.name,`${fmtT(audioBuf.duration)} min · ${audioBuf.sampleRate} Hz`);
+      fileName=f.name.replace(/\.[^.]+$/,'');
+      $('audioPanel').classList.remove('hidden');
+      await detect();
+    }
+  }catch(err){
+    showChip('ERROR',f.name,err.message||'Could not read the file. Try WAV, MP3 or MIDI.');
+    $('chipType').style.cssText='background:var(--warn-soft);color:var(--warn)';
+    return;
+  }
+  $('chipType').style.cssText='';
+}
+
+let samples=null;
+async function detect(){
+  if(!audioBuf) return;
+  const o={fmin:num('fmin',80),fmax:num('fmax',1100),minMs:num('minms',90),db:num('gate',-40),thr:num('thr',0.15)};
+  if(!(o.fmin>=30&&o.fmax>o.fmin&&o.fmax<=AFS/4)){
+    $('astatus').textContent=`Invalid pitch range (30 to ${AFS/4} Hz).`; return }
+  $('detect').disabled=true; $('bar').style.width='0';
+  try{
+    if(!samples){
+      $('astatus').textContent='Preparing audio …';
+      const off=new OfflineAudioContext(1,Math.ceil(audioBuf.duration*AFS),AFS);
+      const s=off.createBufferSource(); s.buffer=audioBuf; s.connect(off.destination); s.start();
+      samples=(await off.startRendering()).getChannelData(0);
+      let pk=0; for(let i=0;i<samples.length;i++) pk=Math.max(pk,Math.abs(samples[i]));
+      if(pk>0) for(let i=0;i<samples.length;i++) samples[i]/=pk;
+      const bins=2400, per=Math.max(1,Math.floor(samples.length/bins)); env=new Float32Array(Math.ceil(samples.length/per));
+      for(let b=0;b<env.length;b++){ let m=0; for(let k=b*per;k<Math.min(samples.length,(b+1)*per);k++) m=Math.max(m,Math.abs(samples[k])); env[b]=m }
+    }
+    const r=await yinTrack(samples,AFS,o,p=>{ $('bar').style.width=(p*100).toFixed(0)+'%'; $('astatus').textContent=`Detecting notes … ${Math.round(p*100)} %` });
+    $('bar').style.width='100%';
+    const ns=framesToNotes(r.f0,r.hop,o);
+    if(!ns.length){ $('astatus').textContent='No notes detected. Pick another instrument or lower the volume threshold under "Fine-tune detection".'; return }
+    loadMidiObject(notesToMidi(ns,num('bpm',120),'Audio'),fileName);
+    $('astatus').textContent=`${ns.length} notes detected.`;
+  } finally { $('detect').disabled=false }
+}
+const PRESETS={voice:[80,1100],whistle:[500,2700],guitar:[75,1300],bass:[38,420],keys:[50,2200]};
+
+// ---------- crop + compute ----------
+function setCrop(a,b){
+  const T=total();
+  a=Math.max(0,Math.min(a,T)); b=Math.max(0,Math.min(b,T));
+  if(b-a<tpb/16){ if(drag==='A') a=b-tpb/16; else b=a+tpb/16 }
+  A=Math.max(0,a); B=Math.min(T,b);
+  $('barA').value=+(A/tpb+1).toFixed(2); $('barB').value=+(B/tpb+1).toFixed(2);
+  $('barA').max=$('barB').max=T/tpb+1;
+  compute();
+}
+
+let lastResult=null;
+function compute(){
+  // control readouts
+  const v=vari(), sh=12*Math.log2(v);
+  $('tempoO').textContent=Math.round(tempoF()*100)+' %';
+  $('variO').textContent=Math.round(v*100)+' %';
+  $('variSub').textContent=Math.abs(sh)<0.005?'Tempo and pitch together, like a faster tape.':
+    `Pitch ${sh>0?'+':''}${sh.toFixed(2)} semitones, tempo ×${v.toFixed(2)}.`;
+  const tr=parseInt($('transpose').value)||0; $('trO').textContent=(tr>0?'+':'')+tr;
+  if(!midi){ draw(); return }
+  const q=P(), segs=segsFor(A,B), r=buildGcode(segs,q,voices,fileName,outMode);
+  lastResult=r;
+  const dur=(tm.toSec(B)-tm.toSec(A))/rate();
+  $('durT').textContent=fmtT(dur);
+  const st=$('status'), pitched=segs.filter(s=>s.a!==null).length;
+  $('dl').disabled=!pitched; $('savemid').disabled=false;
+  if(!pitched){ st.className='status warn'; st.textContent='No notes in the selected range.'; draw(); return }
+  const skipped=r.skipA+r.skipB;
+  if(!skipped){
+    let vmaxUsed=0; for(const s of segs){ const m=segMotion(s,q,voices); vmaxUsed=Math.max(vmaxUsed,Math.hypot(m.vx,m.vy)) }
+    st.className='status ok';
+    st.textContent=`Everything is playable on ${q.name}: ${fmtT(dur)} long, fastest move ${Math.round(vmaxUsed)} of ${Math.round(q.vmax)} mm/s.`;
+  } else {
+    let best=0, bestN=skipped;
+    for(const ex of [-12,-24,-36,-48,12,24]){ const n=countSkipped(segs,q,voices,ex); if(n<bestN){best=ex;bestN=n} }
+    st.className='status warn';
+    st.innerHTML=`${skipped} ${skipped===1?'section is':'sections are'} too high for ${q.name} and will play as rests.`+
+      (best?` <button id="fix">Transpose ${best>0?'+':''}${best} semitones</button>`:'');
+    if(best) $('fix').onclick=()=>{ $('transpose').value=tr+best; liveChange() };
+  }
+  draw();
+}
+
+// ---------- drawing ----------
+function draw(){
+  const cv=$('roll'), dpr=window.devicePixelRatio||1;
+  const W=cv.clientWidth, H=cv.clientHeight; if(!W) return;
+  if(cv.width!==Math.round(W*dpr)||cv.height!==Math.round(H*dpr)){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr)}
+  const x=cv.getContext('2d'); x.setTransform(dpr,0,0,dpr,0,0); x.clearRect(0,0,W,H);
+  if(!midi) return;
+  const css=getComputedStyle(document.documentElement), col=k=>css.getPropertyValue(k).trim();
+  const T=total(), X=t=>t/T*W;
+  const ps=notes.map(n=>n.n), lo=Math.min(...ps)-2, hi=Math.max(...ps)+2, span=Math.max(1,hi-lo);
+  const top=20, h=H-top-8, rowH=Math.max(2,Math.min(9,h/span)), Y=n=>top+h-((n-lo)/span)*h;
+
+  // waveform (audio source)
+  if(env&&audioBuf){
+    x.fillStyle=col('--wave'); const mid=top+h/2;
+    const step=Math.max(1,Math.floor(env.length/W));
+    for(let b=0;b<env.length;b+=step){
+      const sec=b/env.length*audioBuf.duration, px=X(tm.toTick(sec)), a=env[b]*h*0.48;
+      x.fillRect(px,mid-a,Math.max(1,W/env.length*step),a*2);
+    }
+  }
+  // unplayable band
+  const lim=maxPitch(P())-shift();
+  if(lim<hi){ x.fillStyle=col('--out'); const yl=Math.max(top,Y(lim)); x.fillRect(0,top,W,yl-top) }
+  // bars
+  const bars=T/tpb, every=Math.ceil(bars/(W/36));
+  x.font='11px ui-sans-serif,system-ui,sans-serif'; x.textBaseline='top';
+  for(let b=0;b<=bars;b++){
+    x.fillStyle=col('--grid'); x.fillRect(Math.round(X(b*tpb)),top,1,h);
+    if(b%every===0&&b<bars){ x.fillStyle=col('--muted'); x.fillText(String(b+1),X(b*tpb)+3,4) }
+  }
+  // notes
+  x.fillStyle=col('--accent');
+  for(const n of notes){ x.fillRect(X(n.s),Y(n.n)-rowH/2,Math.max(1.5,X(n.e)-X(n.s)-0.5),rowH) }
+  // crop shading + flags
+  x.fillStyle=col('--shade'); x.fillRect(0,top,X(A),h); x.fillRect(X(B),top,W-X(B),h);
+  x.fillStyle=col('--handle');
+  for(const [t,side] of [[A,1],[B,-1]]){
+    const px=Math.round(X(t)); x.fillRect(px-1,top,2,h);
+    x.beginPath(); x.moveTo(px,top); x.lineTo(px+12*side,top+6); x.lineTo(px,top+12); x.fill();
+  }
+  // playhead
+  const pt=posTick(), pp=Math.round(X(pt));
+  x.fillStyle=col('--play'); x.fillRect(pp-1,top-6,2,h+6);
+  x.beginPath(); x.moveTo(pp-6,top-8); x.lineTo(pp+6,top-8); x.lineTo(pp,top-1); x.fill();
+  $('posT').textContent=fmtT((tm.toSec(pt)-tm.toSec(A))/rate());
+  $('posBar').textContent=`Bar ${(pt/tpb+1).toFixed(2)} · ${noteName(lo+2)}–${noteName(hi-2)}`;
+}
+
+// ---------- audio playback ----------
+function ctx(){ if(!ac) ac=new AudioContext(); if(ac.state==='suspended') ac.resume(); return ac }
+function posTick(){
+  if(!player) return cursor;
+  const el=Math.max(0,ac.currentTime-player.t0);
+  return Math.min(player.to, tm.toTick(tm.toSec(player.from)+el*player.rate));
+}
+function play(from){
+  stopPlayer();
+  const T=total(); if(from>=T||from<0) from=A;
+  const to=($('stopB').checked&&from<B)?B:T;
+  const a=ctx(), t0=a.currentTime+0.03, len=(tm.toSec(to)-tm.toSec(from))/rate(), nodes=[];
+  if(srcMode==='orig'&&audioBuf){
+    const s=a.createBufferSource(); s.buffer=audioBuf; s.playbackRate.value=rate();
+    const g=a.createGain(); g.gain.value=0.9; s.connect(g).connect(a.destination);
+    s.start(t0,tm.toSec(from),len*rate()); nodes.push(s);
+  } else {
+    const sn=secNotes(from,to), q=P();
+    const mk=()=>{const o=a.createOscillator(), g=a.createGain(); o.type='square'; g.gain.value=0; o.connect(g).connect(a.destination); return {o,g}};
+    const va=mk(), vb=voices>1?mk():null;
+    if(sn.length){
+      let t=t0+Math.min(...sn.map(x=>x.s));
+      for(const s of voiceSegs(sn,v2mode)){
+        const m=segMotion(s,q,voices);
+        if(m.a===null) va.g.gain.setValueAtTime(0,t); else { va.o.frequency.setValueAtTime(hz(m.a),t); va.g.gain.setValueAtTime(0.07,t) }
+        if(vb){ if(m.b===null) vb.g.gain.setValueAtTime(0,t); else { vb.o.frequency.setValueAtTime(hz(m.b),t); vb.g.gain.setValueAtTime(0.05,t) } }
+        t+=s.d;
+      }
+    }
+    for(const v of [va,vb]) if(v){ v.g.gain.setValueAtTime(0,t0+len); v.o.start(t0); v.o.stop(t0+len+0.02); nodes.push(v.o) }
+  }
+  const pl={nodes,t0,from,to,rate:rate()}; player=pl; cursor=from;
+  nodes[0].onended=()=>{ if(player===pl){ player=null; cursor=to; cancelAnimationFrame(raf); setPlayIcon(); draw() } };
+  setPlayIcon();
+  const loop=()=>{ if(player!==pl) return; draw(); raf=requestAnimationFrame(loop) }; loop();
+}
+function stopPlayer(){
+  if(player){ const p=player; player=null; for(const n of p.nodes){ n.onended=null; try{n.stop()}catch(e){} n.disconnect() } }
+  cancelAnimationFrame(raf); setPlayIcon();
+}
+function stopAll(){ stopPlayer(); scrubEnd() }
+function setPlayIcon(){ const b=$('play'); b.innerHTML=player?ICON_PAUSE:ICON_PLAY; b.setAttribute('aria-label',player?'Pause':'Play') }
+function pause(){ if(player){ cursor=posTick(); stopPlayer(); draw() } }
+function toggle(){ if(!midi) return; player?pause():play(cursor) }
+function seek(t){ cursor=Math.max(0,Math.min(total(),t)); if(player) play(cursor); else draw() }
+function liveChange(){ const t=player?posTick():null; compute(); if(t!==null) play(t) }
+
+function pitchAt(tick){
+  const act=notes.filter(x=>x.s<=tick&&x.e>tick).map(x=>x.n+shift());
+  if(!act.length) return null;
+  const s=voiceSegs(act.map(n=>({s:0,e:1,n})),v2mode)[0];
+  const m=segMotion(s,P(),voices); return m.a;
+}
+function scrubStart(tick){
+  const a=ctx(), o=a.createOscillator(), g=a.createGain();
+  o.type='square'; g.gain.value=0; o.connect(g).connect(a.destination); o.start();
+  scrub={o,g}; scrubTo(tick);
+}
+function scrubTo(tick){
+  if(!scrub) return; const p=pitchAt(tick), t=ac.currentTime;
+  if(p===null) scrub.g.gain.setTargetAtTime(0,t,0.01);
+  else{ scrub.o.frequency.setTargetAtTime(hz(p),t,0.004); scrub.g.gain.setTargetAtTime(0.06,t,0.01) }
+}
+function scrubEnd(){ if(!scrub) return; const s=scrub; scrub=null; s.g.gain.setTargetAtTime(0,ac.currentTime,0.01); s.o.stop(ac.currentTime+0.06) }
+
+// ---------- pointer on the roll ----------
+const cv=$('roll');
+const rawTick=ev=>{const r=cv.getBoundingClientRect(); return Math.max(0,Math.min(total(),(ev.clientX-r.left)/r.width*total()))};
+const snapT=t=>$('snap').checked?Math.round(t/tpb)*tpb:t;
+function handleHit(ev){
+  const r=cv.getBoundingClientRect(), px=ev.clientX-r.left, T=total();
+  const da=Math.abs(px-A/T*r.width), db=Math.abs(px-B/T*r.width);
+  if(Math.min(da,db)>9) return null; return da<=db?'A':'B';
+}
+cv.addEventListener('pointerdown',ev=>{
+  if(!midi) return; cv.setPointerCapture(ev.pointerId);
+  const h=handleHit(ev); if(h){ drag=h; return }
+  drag='seek'; cursor=rawTick(ev);
+  if(player){ play(cursor); lastRestart=performance.now() } else { if(srcMode==='printer') scrubStart(cursor); draw() }
+});
+cv.addEventListener('pointermove',ev=>{
+  if(!drag){ cv.style.cursor=midi&&handleHit(ev)?'ew-resize':'pointer'; return }
+  if(drag==='A'||drag==='B'){ const t=snapT(rawTick(ev)); drag==='A'?setCrop(t,B):setCrop(A,t); return }
+  cursor=rawTick(ev);
+  if(player){ if(performance.now()-lastRestart>90){ play(cursor); lastRestart=performance.now() } }
+  else { scrubTo(cursor); draw() }
+});
+function endDrag(){ if(drag==='seek'){ if(player) play(cursor); else scrubEnd() } drag=null }
+cv.addEventListener('pointerup',endDrag); cv.addEventListener('pointercancel',endDrag);
+
+// ---------- controls ----------
+function setVoices(n){
+  voices=n; store.set({voices:n});
+  for(const b of $('voices').children) b.classList.toggle('on',+b.dataset.v===n);
+  $('voicesO').textContent=n; $('voice2').classList.toggle('hidden',n<2);
+  $('voicesSub').textContent=n===1?'Plays the highest note.':'Melody plus a second voice on the second motor.';
+  liveChange();
+}
+function setSrcMode(m){
+  srcMode=m; for(const b of $('srcMode').children) b.classList.toggle('on',b.dataset.v===m);
+}
+$('voices').onclick=e=>{ const b=e.target.closest('button'); if(b) setVoices(+b.dataset.v) };
+$('voice2').onchange=()=>{ v2mode=$('voice2').value; liveChange() };
+$('srcMode').onclick=e=>{ const b=e.target.closest('button'); if(!b||b.disabled) return; const t=player?posTick():null; setSrcMode(b.dataset.v); if(t!==null) play(t) };
+['tempo','vari','transpose'].forEach(id=>$(id).addEventListener('input',liveChange));
+for(const b of document.querySelectorAll('[data-tr]')) b.onclick=()=>{ $('transpose').value=(parseInt($('transpose').value)||0)+(+b.dataset.tr); liveChange() };
+$('tempo').addEventListener('dblclick',()=>{ $('tempo').value=100; liveChange() });
+$('vari').addEventListener('dblclick',()=>{ $('vari').value=100; liveChange() });
+$('track').onchange=loadTrack;
+$('barA').onchange=()=>setCrop((num('barA',1)-1)*tpb,B);
+$('barB').onchange=()=>setCrop(A,(num('barB',1)-1)*tpb);
+$('reset').onclick=()=>setCrop(0,total());
+$('play').onclick=toggle;
+$('toA').onclick=()=>seek(A);
+$('setA').onclick=()=>{ const t=snapT(posTick()); drag='A'; setCrop(t,B); drag=null };
+$('setB').onclick=()=>{ const t=snapT(posTick()); drag='B'; setCrop(A,t); drag=null };
+document.addEventListener('keydown',ev=>{
+  if(!midi||/^(INPUT|SELECT|TEXTAREA)$/.test(ev.target.tagName)) return;
+  if(ev.code==='Space'){ if(ev.target.tagName==='BUTTON') return; ev.preventDefault(); toggle() }
+  else if(ev.key==='ArrowRight'){ ev.preventDefault(); seek(posTick()+tpb) }
+  else if(ev.key==='ArrowLeft'){ ev.preventDefault(); seek(posTick()-tpb) }
+  else if(ev.key==='Home'){ ev.preventDefault(); seek(A) }
+});
+
+// source panel
+$('file').onchange=e=>{ openFile(e.target.files[0]); e.target.value='' };
+$('chipChange').onclick=()=>$('file').click();
+$('drop').addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); $('file').click() } });
+['dragenter','dragover'].forEach(t=>document.addEventListener(t,e=>{ e.preventDefault(); $('drop').classList.add('over') }));
+document.addEventListener('dragleave',e=>{ if(!e.relatedTarget) $('drop').classList.remove('over') });
+document.addEventListener('drop',e=>{ e.preventDefault(); $('drop').classList.remove('over');
+  const f=e.dataTransfer&&e.dataTransfer.files[0]; if(f) openFile(f) });
+$('preset').onclick=e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  preset=b.dataset.p; for(const x of $('preset').children) x.classList.toggle('on',x===b);
+  [$('fmin').value,$('fmax').value]=PRESETS[preset]; detect();
+};
+$('detect').onclick=detect;
+
+// printer panel
+$('brand').onchange=()=>fillModels();
+$('model').onchange=loadPrinter;
+$('stealth').onchange=()=>{ store.set({stealth:$('stealth').checked}); printerChanged() };
+['fsX','fsY','kin','fw','cxI','cyI','hxI','hyI','vI','accI','zI'].forEach(id=>$(id).addEventListener('input',printerChanged));
+$('tune').addEventListener('input',()=>{ store.set({tune:num('tune',0)}); printerChanged() });
+$('advReset').onclick=loadPrinter;
+$('cApply').onclick=()=>{
+  const fs=(360/num('cAng',1.8))/(num('cTeeth',20)*num('cPitch',2));
+  $('fsX').value=$('fsY').value=+fs.toFixed(4); printerChanged();
+};
+
+// ---------- export ----------
+function download(data,name,type='text/plain'){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([data],{type}));
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+const slug=s=>s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+const suffix=()=>((A===0&&B>=total())?'':`_T${+(A/tpb+1).toFixed(2)}-${+(B/tpb+1).toFixed(2)}`)+
+  (Math.abs(vari()-1)<1e-6?'':`_v${Math.round(vari()*100)}`);
+
+function setOutMode(m){
+  outMode=m; for(const b of $('outMode').children) b.classList.toggle('on',b.dataset.v===m);
+  $('dl').textContent=m==='snippet'?'Download snippet':'Download G-code';
+  $('copy').classList.toggle('hidden',m!=='snippet');
+  printerChanged();
+}
+$('outMode').onclick=e=>{ const b=e.target.closest('button'); if(b) setOutMode(b.dataset.v) };
+async function copyText(t){
+  try{ await navigator.clipboard.writeText(t); return true }catch(e){}
+  const ta=document.createElement('textarea'); ta.value=t; ta.style.cssText='position:fixed;opacity:0';
+  document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy') }catch(e){} ta.remove(); return ok;
+}
+$('copy').onclick=async()=>{
+  compute(); const r=lastResult, ok=await copyText(r.text);
+  $('out').textContent=ok?`Snippet copied: ${r.text.split('\n').length} lines, from STEPPERSONG BEGIN to STEPPERSONG END. Paste it into your slicer's start G-code.`
+    :'Copying failed in this browser. Use "Download snippet" and paste the file contents instead.';
+};
+$('dl').onclick=()=>{
+  compute(); const r=lastResult, q=P();
+  const name=`${fileName}${suffix()}_${slug(cur().b+' '+cur().m.replace(/\(.*?\)/g,''))}${outMode==='snippet'?'_start-snippet':''}.gcode`;
+  download(r.text,name);
+  $('steps').children[3].classList.add('done');
+  $('out').textContent=`${name}\n${r.text.split('\n').length} lines · ${voices} ${voices===1?'voice':'voices'} · ${q.name}`+
+    ((r.skipA+r.skipB)?` · ${r.skipA+r.skipB} too-high sections played as rests`:'');
+};
+$('calib').onclick=()=>{
+  const q=P(), r=buildGcode([{d:2,a:69,b:null},{d:0.5,a:null,b:null},{d:2,a:81,b:null}],q,1,'Test tone A4 / A5');
+  download(r.text,`testtone_${slug(cur().b+' '+cur().m.replace(/\(.*?\)/g,''))}.gcode`);
+  $('out').textContent=`Test tone for ${q.name}: 2 s A4 (440 Hz), pause, 2 s A5 (880 Hz).`+
+    (r.skipA?'\nA5 exceeds this printer\'s speed limit and is skipped.':'');
+};
+$('savemid').onclick=()=>{
+  const sh=shift(), semis=Math.round(sh), r=rate();
+  const cn=cropNotes(notes,A,B).map(x=>({...x,n:Math.max(0,Math.min(127,x.n+semis))}));
+  const tempos=cropTempos(midi.tempos,tm,A,B).map(t=>({tick:t.tick,us:Math.max(1,Math.round(t.us/r))}));
+  const name=`${fileName}${suffix()}.mid`;
+  download(writeMidi(midi.div,tempos,midi.timesig,cn),name,'audio/midi');
+  let msg=`${name} · ${cn.length} notes`;
+  if(semis) msg+=` · ${semis>0?'+':''}${semis} semitones`;
+  if(Math.abs(r-1)>1e-6) msg+=` · tempo ×${r.toFixed(2)}`;
+  if(Math.abs(sh-semis)>0.05) msg+=`\nPitch rounded to whole semitones: MIDI has no microtones, the G-code does.`;
+  $('out').textContent=msg;
+};
+
+new ResizeObserver(draw).observe(cv);
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+setPlayIcon(); initPrinters();
+
+</script>
+</body>
+</html>
